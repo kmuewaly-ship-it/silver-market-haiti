@@ -29,79 +29,11 @@ import {
   Smartphone,
   Building2,
   AlertTriangle,
-  Download
+  Download,
+  Loader2
 } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
-
-interface Payment {
-  id: string;
-  seller: {
-    name: string;
-    email: string;
-    phone: string;
-  };
-  amount: number;
-  currency: string;
-  method: "stripe" | "moncash" | "transfer";
-  reference: string;
-  status: "pending" | "verified" | "rejected";
-  date: string;
-  notes?: string;
-}
-
-const mockPayments: Payment[] = [
-  {
-    id: "PAY-001",
-    seller: { name: "Jean Pierre Dubois", email: "jean@example.com", phone: "+509 3700 0001" },
-    amount: 2450,
-    currency: "USD",
-    method: "moncash",
-    reference: "MC-789456123",
-    status: "pending",
-    date: "2024-12-08T10:30:00",
-  },
-  {
-    id: "PAY-002",
-    seller: { name: "Marie Claire Baptiste", email: "marie@example.com", phone: "+509 3700 0002" },
-    amount: 1890,
-    currency: "USD",
-    method: "stripe",
-    reference: "pi_3O5K2J2eZvKYlo2C1234abcd",
-    status: "pending",
-    date: "2024-12-08T09:15:00",
-  },
-  {
-    id: "PAY-003",
-    seller: { name: "Paul Joseph Louis", email: "paul@example.com", phone: "+509 3700 0003" },
-    amount: 3200,
-    currency: "USD",
-    method: "transfer",
-    reference: "BNK-2024120801",
-    status: "pending",
-    date: "2024-12-08T08:45:00",
-  },
-  {
-    id: "PAY-004",
-    seller: { name: "Sophie Martine", email: "sophie@example.com", phone: "+509 3700 0004" },
-    amount: 890,
-    currency: "USD",
-    method: "moncash",
-    reference: "MC-456789012",
-    status: "verified",
-    date: "2024-12-07T16:20:00",
-  },
-  {
-    id: "PAY-005",
-    seller: { name: "Andre Michel", email: "andre@example.com", phone: "+509 3700 0005" },
-    amount: 4500,
-    currency: "USD",
-    method: "stripe",
-    reference: "pi_3O5K2J2eZvKYlo2C5678efgh",
-    status: "rejected",
-    date: "2024-12-07T14:00:00",
-    notes: "Tarjeta rechazada por el banco"
-  },
-];
+import { usePayments, Payment } from "@/hooks/usePayments";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const getMethodIcon = (method: Payment["method"]) => {
   switch (method) {
@@ -134,8 +66,7 @@ const getStatusBadge = (status: Payment["status"]) => {
 };
 
 const AdminConciliacion = () => {
-  const { toast } = useToast();
-  const [payments, setPayments] = useState<Payment[]>(mockPayments);
+  const { payments, stats, isLoading, updatePaymentStatus } = usePayments();
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [methodFilter, setMethodFilter] = useState<string>("all");
@@ -143,11 +74,12 @@ const AdminConciliacion = () => {
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [confirmAction, setConfirmAction] = useState<"verify" | "reject" | null>(null);
+  const [isUpdating, setIsUpdating] = useState(false);
 
   const filteredPayments = payments.filter((payment) => {
     const matchesSearch = 
-      payment.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      payment.seller.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      payment.payment_number.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      payment.seller?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       payment.reference.toLowerCase().includes(searchTerm.toLowerCase());
     
     const matchesStatus = statusFilter === "all" || payment.status === statusFilter;
@@ -156,39 +88,47 @@ const AdminConciliacion = () => {
     return matchesSearch && matchesStatus && matchesMethod;
   });
 
-  const pendingCount = payments.filter(p => p.status === "pending").length;
-  const verifiedCount = payments.filter(p => p.status === "verified").length;
-  const rejectedCount = payments.filter(p => p.status === "rejected").length;
-
   const handleAction = (payment: Payment, action: "verify" | "reject") => {
     setSelectedPayment(payment);
     setConfirmAction(action);
     setIsConfirmOpen(true);
   };
 
-  const confirmActionHandler = () => {
+  const confirmActionHandler = async () => {
     if (!selectedPayment || !confirmAction) return;
 
-    setPayments(prev => prev.map(p => 
-      p.id === selectedPayment.id 
-        ? { ...p, status: confirmAction === "verify" ? "verified" : "rejected" }
-        : p
-    ));
+    setIsUpdating(true);
+    const success = await updatePaymentStatus(
+      selectedPayment.id, 
+      confirmAction === "verify" ? "verified" : "rejected"
+    );
 
-    toast({
-      title: confirmAction === "verify" ? "Pago Verificado" : "Pago Rechazado",
-      description: `El pago ${selectedPayment.id} ha sido ${confirmAction === "verify" ? "verificado" : "rechazado"} exitosamente.`,
-    });
-
-    setIsConfirmOpen(false);
-    setSelectedPayment(null);
-    setConfirmAction(null);
+    if (success) {
+      setIsConfirmOpen(false);
+      setSelectedPayment(null);
+      setConfirmAction(null);
+    }
+    setIsUpdating(false);
   };
 
   const openDetail = (payment: Payment) => {
     setSelectedPayment(payment);
     setIsDetailOpen(true);
   };
+
+  if (isLoading) {
+    return (
+      <AdminLayout title="Conciliación B2B" subtitle="Verificación de pagos anticipados">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+          {[1, 2, 3].map((i) => (
+            <Skeleton key={i} className="h-24" />
+          ))}
+        </div>
+        <Skeleton className="h-16 mb-6" />
+        <Skeleton className="h-96" />
+      </AdminLayout>
+    );
+  }
 
   return (
     <AdminLayout 
@@ -203,7 +143,7 @@ const AdminConciliacion = () => {
               <Clock className="w-6 h-6 text-amber-500" />
             </div>
             <div>
-              <p className="text-2xl font-bold text-foreground">{pendingCount}</p>
+              <p className="text-2xl font-bold text-foreground">{stats.pending}</p>
               <p className="text-sm text-muted-foreground">Pendientes</p>
             </div>
           </CardContent>
@@ -214,7 +154,7 @@ const AdminConciliacion = () => {
               <CheckCircle2 className="w-6 h-6 text-teal" />
             </div>
             <div>
-              <p className="text-2xl font-bold text-foreground">{verifiedCount}</p>
+              <p className="text-2xl font-bold text-foreground">{stats.verified}</p>
               <p className="text-sm text-muted-foreground">Verificados</p>
             </div>
           </CardContent>
@@ -225,7 +165,7 @@ const AdminConciliacion = () => {
               <XCircle className="w-6 h-6 text-destructive" />
             </div>
             <div>
-              <p className="text-2xl font-bold text-foreground">{rejectedCount}</p>
+              <p className="text-2xl font-bold text-foreground">{stats.rejected}</p>
               <p className="text-sm text-muted-foreground">Rechazados</p>
             </div>
           </CardContent>
@@ -302,11 +242,11 @@ const AdminConciliacion = () => {
               <tbody>
                 {filteredPayments.map((payment) => (
                   <tr key={payment.id} className="border-b border-border/50 hover:bg-muted/30 transition-colors">
-                    <td className="py-4 px-4 text-sm font-mono text-foreground">{payment.id}</td>
+                    <td className="py-4 px-4 text-sm font-mono text-foreground">{payment.payment_number}</td>
                     <td className="py-4 px-4">
                       <div>
-                        <p className="text-sm font-medium text-foreground">{payment.seller.name}</p>
-                        <p className="text-xs text-muted-foreground">{payment.seller.email}</p>
+                        <p className="text-sm font-medium text-foreground">{payment.seller?.name || 'N/A'}</p>
+                        <p className="text-xs text-muted-foreground">{payment.seller?.email || ''}</p>
                       </div>
                     </td>
                     <td className="py-4 px-4 text-sm font-semibold text-foreground">
@@ -323,7 +263,7 @@ const AdminConciliacion = () => {
                     </td>
                     <td className="py-4 px-4">{getStatusBadge(payment.status)}</td>
                     <td className="py-4 px-4 text-sm text-muted-foreground">
-                      {new Date(payment.date).toLocaleDateString("es-HT", {
+                      {new Date(payment.created_at).toLocaleDateString("es-HT", {
                         day: "2-digit",
                         month: "short",
                         hour: "2-digit",
@@ -370,7 +310,11 @@ const AdminConciliacion = () => {
               <div className="text-center py-12">
                 <AlertTriangle className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
                 <p className="text-lg font-medium text-foreground mb-2">No se encontraron pagos</p>
-                <p className="text-sm text-muted-foreground">Intenta ajustar los filtros de búsqueda</p>
+                <p className="text-sm text-muted-foreground">
+                  {payments.length === 0 
+                    ? "Aún no hay pagos B2B registrados en el sistema" 
+                    : "Intenta ajustar los filtros de búsqueda"}
+                </p>
               </div>
             )}
           </div>
@@ -381,7 +325,7 @@ const AdminConciliacion = () => {
       <Dialog open={isDetailOpen} onOpenChange={setIsDetailOpen}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>Detalle del Pago {selectedPayment?.id}</DialogTitle>
+            <DialogTitle>Detalle del Pago {selectedPayment?.payment_number}</DialogTitle>
             <DialogDescription>
               Información completa de la transacción B2B
             </DialogDescription>
@@ -392,15 +336,15 @@ const AdminConciliacion = () => {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <p className="text-sm text-muted-foreground">Vendedor</p>
-                  <p className="font-medium">{selectedPayment.seller.name}</p>
+                  <p className="font-medium">{selectedPayment.seller?.name || 'N/A'}</p>
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Email</p>
-                  <p className="font-medium">{selectedPayment.seller.email}</p>
+                  <p className="font-medium">{selectedPayment.seller?.email || 'N/A'}</p>
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Teléfono</p>
-                  <p className="font-medium">{selectedPayment.seller.phone}</p>
+                  <p className="font-medium">{selectedPayment.seller?.phone || 'N/A'}</p>
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Monto</p>
@@ -446,17 +390,18 @@ const AdminConciliacion = () => {
                     handleAction(selectedPayment, "reject");
                   }}
                 >
+                  <XCircle className="w-4 h-4 mr-2" />
                   Rechazar
                 </Button>
                 <Button 
-                  variant="default"
                   className="bg-teal hover:bg-teal/90"
                   onClick={() => {
                     setIsDetailOpen(false);
                     handleAction(selectedPayment, "verify");
                   }}
                 >
-                  Verificar Pago
+                  <CheckCircle2 className="w-4 h-4 mr-2" />
+                  Verificar
                 </Button>
               </>
             )}
@@ -464,7 +409,7 @@ const AdminConciliacion = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Confirm Dialog */}
+      {/* Confirmation Dialog */}
       <Dialog open={isConfirmOpen} onOpenChange={setIsConfirmOpen}>
         <DialogContent>
           <DialogHeader>
@@ -473,20 +418,38 @@ const AdminConciliacion = () => {
             </DialogTitle>
             <DialogDescription>
               {confirmAction === "verify" 
-                ? `¿Confirmas que el pago ${selectedPayment?.id} por $${selectedPayment?.amount.toLocaleString()} ha sido recibido?`
-                : `¿Estás seguro de rechazar el pago ${selectedPayment?.id}?`
-              }
+                ? "¿Estás seguro de que deseas verificar este pago? Esta acción confirmará que el pago ha sido recibido correctamente."
+                : "¿Estás seguro de que deseas rechazar este pago? El vendedor será notificado del rechazo."}
             </DialogDescription>
           </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsConfirmOpen(false)}>
+          
+          {selectedPayment && (
+            <div className="bg-muted/50 p-4 rounded-lg">
+              <div className="flex justify-between items-center">
+                <div>
+                  <p className="font-medium">{selectedPayment.payment_number}</p>
+                  <p className="text-sm text-muted-foreground">{selectedPayment.seller?.name}</p>
+                </div>
+                <p className="font-bold text-lg">${selectedPayment.amount.toLocaleString()}</p>
+              </div>
+            </div>
+          )}
+
+          <DialogFooter className="gap-2">
+            <Button 
+              variant="outline" 
+              onClick={() => setIsConfirmOpen(false)}
+              disabled={isUpdating}
+            >
               Cancelar
             </Button>
             <Button 
               variant={confirmAction === "verify" ? "default" : "destructive"}
               className={confirmAction === "verify" ? "bg-teal hover:bg-teal/90" : ""}
               onClick={confirmActionHandler}
+              disabled={isUpdating}
             >
+              {isUpdating && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
               {confirmAction === "verify" ? "Confirmar Verificación" : "Confirmar Rechazo"}
             </Button>
           </DialogFooter>

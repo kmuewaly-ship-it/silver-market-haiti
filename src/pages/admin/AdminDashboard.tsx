@@ -2,7 +2,6 @@ import { AdminLayout } from "@/components/admin/AdminLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { 
   CreditCard, 
-  Package, 
   Users, 
   TrendingUp,
   Clock,
@@ -11,52 +10,8 @@ import {
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-
-const stats = [
-  {
-    title: "Pagos Pendientes",
-    value: "12",
-    description: "Requieren verificación",
-    icon: Clock,
-    color: "text-amber-500",
-    bgColor: "bg-amber-500/10",
-    link: "/admin/conciliacion?status=pending"
-  },
-  {
-    title: "Pagos Verificados",
-    value: "156",
-    description: "Este mes",
-    icon: CheckCircle2,
-    color: "text-teal",
-    bgColor: "bg-teal/10",
-    link: "/admin/conciliacion?status=verified"
-  },
-  {
-    title: "Vendedores Activos",
-    value: "89",
-    description: "+5 esta semana",
-    icon: Users,
-    color: "text-primary",
-    bgColor: "bg-primary/10",
-    link: "/admin/vendedores"
-  },
-  {
-    title: "Volumen B2B",
-    value: "$45.2K",
-    description: "+12% vs mes anterior",
-    icon: TrendingUp,
-    color: "text-accent",
-    bgColor: "bg-accent/10",
-    link: "/admin/conciliacion"
-  },
-];
-
-const recentPayments = [
-  { id: "PAY-001", seller: "Jean Pierre", amount: "$2,450", method: "Mon Cash", status: "pending", date: "Hace 2h" },
-  { id: "PAY-002", seller: "Marie Claire", amount: "$1,890", method: "Stripe", status: "verified", date: "Hace 4h" },
-  { id: "PAY-003", seller: "Paul Baptiste", amount: "$3,200", method: "Transferencia", status: "pending", date: "Hace 5h" },
-  { id: "PAY-004", seller: "Sophie Louis", amount: "$890", method: "Mon Cash", status: "rejected", date: "Hace 6h" },
-];
+import { usePayments, useSellers, Payment } from "@/hooks/usePayments";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const getStatusBadge = (status: string) => {
   switch (status) {
@@ -71,7 +26,74 @@ const getStatusBadge = (status: string) => {
   }
 };
 
+const getMethodLabel = (method: string) => {
+  switch (method) {
+    case "stripe": return "Stripe";
+    case "moncash": return "Mon Cash";
+    case "transfer": return "Transferencia";
+    default: return method;
+  }
+};
+
 const AdminDashboard = () => {
+  const { payments, stats, isLoading: paymentsLoading } = usePayments();
+  const { sellersCount, isLoading: sellersLoading } = useSellers();
+
+  const isLoading = paymentsLoading || sellersLoading;
+  const recentPayments = payments.slice(0, 5);
+
+  const statsData = [
+    {
+      title: "Pagos Pendientes",
+      value: stats.pending.toString(),
+      description: "Requieren verificación",
+      icon: Clock,
+      color: "text-amber-500",
+      bgColor: "bg-amber-500/10",
+      link: "/admin/conciliacion?status=pending"
+    },
+    {
+      title: "Pagos Verificados",
+      value: stats.verified.toString(),
+      description: "Este mes",
+      icon: CheckCircle2,
+      color: "text-teal",
+      bgColor: "bg-teal/10",
+      link: "/admin/conciliacion?status=verified"
+    },
+    {
+      title: "Vendedores Activos",
+      value: sellersCount.toString(),
+      description: "Registrados",
+      icon: Users,
+      color: "text-primary",
+      bgColor: "bg-primary/10",
+      link: "/admin/vendedores"
+    },
+    {
+      title: "Volumen B2B",
+      value: `$${(stats.totalVolume / 1000).toFixed(1)}K`,
+      description: "Total verificado",
+      icon: TrendingUp,
+      color: "text-accent",
+      bgColor: "bg-accent/10",
+      link: "/admin/conciliacion"
+    },
+  ];
+
+  if (isLoading) {
+    return (
+      <AdminLayout title="Dashboard" subtitle="Bienvenido al panel de administración">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+          {[1, 2, 3, 4].map((i) => (
+            <Skeleton key={i} className="h-32" />
+          ))}
+        </div>
+        <Skeleton className="h-96" />
+      </AdminLayout>
+    );
+  }
+
   return (
     <AdminLayout 
       title="Dashboard" 
@@ -79,7 +101,7 @@ const AdminDashboard = () => {
     >
       {/* Stats Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        {stats.map((stat) => (
+        {statsData.map((stat) => (
           <Link key={stat.title} to={stat.link}>
             <Card className="hover:shadow-card transition-all duration-300 cursor-pointer group">
               <CardContent className="p-6">
@@ -112,30 +134,45 @@ const AdminDashboard = () => {
         </CardHeader>
         <CardContent>
           <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-border">
-                  <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">ID</th>
-                  <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Vendedor</th>
-                  <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Monto</th>
-                  <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Método</th>
-                  <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Estado</th>
-                  <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Fecha</th>
-                </tr>
-              </thead>
-              <tbody>
-                {recentPayments.map((payment) => (
-                  <tr key={payment.id} className="border-b border-border/50 hover:bg-muted/30 transition-colors">
-                    <td className="py-3 px-4 text-sm font-mono text-foreground">{payment.id}</td>
-                    <td className="py-3 px-4 text-sm text-foreground">{payment.seller}</td>
-                    <td className="py-3 px-4 text-sm font-semibold text-foreground">{payment.amount}</td>
-                    <td className="py-3 px-4 text-sm text-muted-foreground">{payment.method}</td>
-                    <td className="py-3 px-4">{getStatusBadge(payment.status)}</td>
-                    <td className="py-3 px-4 text-sm text-muted-foreground">{payment.date}</td>
+            {recentPayments.length > 0 ? (
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-border">
+                    <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">ID</th>
+                    <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Vendedor</th>
+                    <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Monto</th>
+                    <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Método</th>
+                    <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Estado</th>
+                    <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Fecha</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {recentPayments.map((payment) => (
+                    <tr key={payment.id} className="border-b border-border/50 hover:bg-muted/30 transition-colors">
+                      <td className="py-3 px-4 text-sm font-mono text-foreground">{payment.payment_number}</td>
+                      <td className="py-3 px-4 text-sm text-foreground">{payment.seller?.name || 'N/A'}</td>
+                      <td className="py-3 px-4 text-sm font-semibold text-foreground">${payment.amount.toLocaleString()}</td>
+                      <td className="py-3 px-4 text-sm text-muted-foreground">{getMethodLabel(payment.method)}</td>
+                      <td className="py-3 px-4">{getStatusBadge(payment.status)}</td>
+                      <td className="py-3 px-4 text-sm text-muted-foreground">
+                        {new Date(payment.created_at).toLocaleDateString("es-HT", {
+                          day: "2-digit",
+                          month: "short",
+                          hour: "2-digit",
+                          minute: "2-digit"
+                        })}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            ) : (
+              <div className="text-center py-12">
+                <CreditCard className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                <p className="text-lg font-medium text-foreground mb-2">Sin pagos recientes</p>
+                <p className="text-sm text-muted-foreground">Los pagos B2B aparecerán aquí cuando se registren</p>
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>

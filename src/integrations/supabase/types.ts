@@ -14,6 +14,62 @@ export type Database = {
   }
   public: {
     Tables: {
+      b2b_payments: {
+        Row: {
+          amount: number
+          created_at: string
+          currency: string
+          id: string
+          method: Database["public"]["Enums"]["payment_method"]
+          notes: string | null
+          payment_number: string
+          reference: string
+          seller_id: string
+          status: Database["public"]["Enums"]["payment_status"]
+          updated_at: string
+          verified_at: string | null
+          verified_by: string | null
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          currency?: string
+          id?: string
+          method: Database["public"]["Enums"]["payment_method"]
+          notes?: string | null
+          payment_number: string
+          reference: string
+          seller_id: string
+          status?: Database["public"]["Enums"]["payment_status"]
+          updated_at?: string
+          verified_at?: string | null
+          verified_by?: string | null
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          currency?: string
+          id?: string
+          method?: Database["public"]["Enums"]["payment_method"]
+          notes?: string | null
+          payment_number?: string
+          reference?: string
+          seller_id?: string
+          status?: Database["public"]["Enums"]["payment_status"]
+          updated_at?: string
+          verified_at?: string | null
+          verified_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "b2b_payments_seller_id_fkey"
+            columns: ["seller_id"]
+            isOneToOne: false
+            referencedRelation: "sellers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -38,6 +94,42 @@ export type Database = {
           full_name?: string | null
           id?: string
           updated_at?: string
+        }
+        Relationships: []
+      }
+      sellers: {
+        Row: {
+          business_name: string | null
+          created_at: string
+          email: string
+          id: string
+          is_verified: boolean | null
+          name: string
+          phone: string | null
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          business_name?: string | null
+          created_at?: string
+          email: string
+          id?: string
+          is_verified?: boolean | null
+          name: string
+          phone?: string | null
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          business_name?: string | null
+          created_at?: string
+          email?: string
+          id?: string
+          is_verified?: boolean | null
+          name?: string
+          phone?: string | null
+          updated_at?: string
+          user_id?: string | null
         }
         Relationships: []
       }
@@ -78,6 +170,8 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "moderator" | "user"
+      payment_method: "stripe" | "moncash" | "transfer"
+      payment_status: "pending" | "verified" | "rejected"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -206,6 +300,8 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "moderator", "user"],
+      payment_method: ["stripe", "moncash", "transfer"],
+      payment_status: ["pending", "verified", "rejected"],
     },
   },
 } as const
