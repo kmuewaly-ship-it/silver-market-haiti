@@ -1,43 +1,166 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { ShoppingBag, ArrowLeft, Eye, EyeOff } from "lucide-react";
+import { ShoppingBag, ArrowLeft, Eye, EyeOff, UserPlus, LogIn } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
+import { z } from "zod";
+
+const authSchema = z.object({
+  email: z.string().trim().email({ message: "Email inválido" }).max(255),
+  password: z.string().min(6, { message: "Mínimo 6 caracteres" }).max(100),
+  fullName: z.string().trim().min(2, { message: "Nombre requerido" }).max(100).optional(),
+});
 
 const AdminLogin = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { user, isAdmin, isLoading: authLoading, signIn, signUp } = useAuth();
+  
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [fullName, setFullName] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isSignUp, setIsSignUp] = useState(false);
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
-  const handleLogin = async (e: React.FormEvent) => {
+  // Redirect if already logged in and is admin
+  useEffect(() => {
+    if (!authLoading && user && isAdmin) {
+      navigate("/admin");
+    }
+  }, [user, isAdmin, authLoading, navigate]);
+
+  const validateForm = () => {
+    try {
+      const data = isSignUp 
+        ? { email, password, fullName } 
+        : { email, password };
+      authSchema.parse(data);
+      setErrors({});
+      return true;
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        const newErrors: Record<string, string> = {};
+        error.errors.forEach((err) => {
+          if (err.path[0]) {
+            newErrors[err.path[0] as string] = err.message;
+          }
+        });
+        setErrors(newErrors);
+      }
+      return false;
+    }
+  };
+
+  const assignAdminRole = async (userId: string) => {
+    const { error } = await supabase
+      .from('user_roles')
+      .insert({ user_id: userId, role: 'admin' });
+    
+    if (error) {
+      console.error('Error assigning admin role:', error);
+      // If error is about duplicate, it's fine
+      if (!error.message.includes('duplicate')) {
+        throw error;
+      }
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!validateForm()) return;
+    
     setIsLoading(true);
 
-    // Simular login - en producción conectar con Supabase Auth
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    if (email && password) {
+    try {
+      if (isSignUp) {
+        const { error } = await signUp(email, password, fullName);
+        
+        if (error) {
+          let message = "Error al crear la cuenta";
+          if (error.message.includes("already registered")) {
+            message = "Este email ya está registrado";
+          } else if (error.message.includes("invalid")) {
+            message = "Email o contraseña inválidos";
+          }
+          
+          toast({
+            title: "Error",
+            description: message,
+            variant: "destructive",
+          });
+          return;
+        }
+
+        // Get the newly created user to assign admin role
+        const { data: { user: newUser } } = await supabase.auth.getUser();
+        
+        if (newUser) {
+          try {
+            await assignAdminRole(newUser.id);
+            toast({
+              title: "¡Cuenta creada!",
+              description: "Ahora eres administrador del sistema",
+            });
+            navigate("/admin");
+          } catch (roleError) {
+            toast({
+              title: "Cuenta creada",
+              description: "Pero no se pudo asignar rol de admin. Contacta soporte.",
+              variant: "destructive",
+            });
+          }
+        }
+      } else {
+        const { error } = await signIn(email, password);
+        
+        if (error) {
+          let message = "Credenciales incorrectas";
+          if (error.message.includes("Invalid login")) {
+            message = "Email o contraseña incorrectos";
+          } else if (error.message.includes("Email not confirmed")) {
+            message = "Por favor confirma tu email primero";
+          }
+          
+          toast({
+            title: "Error de acceso",
+            description: message,
+            variant: "destructive",
+          });
+          return;
+        }
+
+        toast({
+          title: "Acceso exitoso",
+          description: "Bienvenido al panel de administración",
+        });
+        navigate("/admin");
+      }
+    } catch (error) {
       toast({
-        title: "Acceso exitoso",
-        description: "Bienvenido al panel de administración",
-      });
-      navigate("/admin");
-    } else {
-      toast({
-        title: "Error de acceso",
-        description: "Por favor verifica tus credenciales",
+        title: "Error",
+        description: "Ocurrió un error inesperado",
         variant: "destructive",
       });
+    } finally {
+      setIsLoading(false);
     }
-    
-    setIsLoading(false);
   };
+
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-hero-gradient flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-foreground" />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-hero-gradient flex items-center justify-center p-4">
@@ -60,13 +183,35 @@ const AdminLogin = () => {
             <div className="w-16 h-16 rounded-2xl bg-hero-gradient flex items-center justify-center mx-auto mb-4">
               <ShoppingBag className="w-8 h-8 text-primary-foreground" />
             </div>
-            <CardTitle className="text-2xl">Panel de Administración</CardTitle>
+            <CardTitle className="text-2xl">
+              {isSignUp ? "Crear cuenta Admin" : "Panel de Administración"}
+            </CardTitle>
             <CardDescription>
-              Ingresa tus credenciales para acceder
+              {isSignUp 
+                ? "Registra la primera cuenta de administrador" 
+                : "Ingresa tus credenciales para acceder"}
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleLogin} className="space-y-4">
+            <form onSubmit={handleSubmit} className="space-y-4">
+              {isSignUp && (
+                <div className="space-y-2">
+                  <Label htmlFor="fullName">Nombre completo</Label>
+                  <Input
+                    id="fullName"
+                    type="text"
+                    placeholder="Tu nombre"
+                    value={fullName}
+                    onChange={(e) => setFullName(e.target.value)}
+                    className={errors.fullName ? "border-destructive" : ""}
+                    required
+                  />
+                  {errors.fullName && (
+                    <p className="text-sm text-destructive">{errors.fullName}</p>
+                  )}
+                </div>
+              )}
+              
               <div className="space-y-2">
                 <Label htmlFor="email">Correo electrónico</Label>
                 <Input
@@ -75,8 +220,12 @@ const AdminLogin = () => {
                   placeholder="admin@sivermarket509.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
+                  className={errors.email ? "border-destructive" : ""}
                   required
                 />
+                {errors.email && (
+                  <p className="text-sm text-destructive">{errors.email}</p>
+                )}
               </div>
               
               <div className="space-y-2">
@@ -88,6 +237,7 @@ const AdminLogin = () => {
                     placeholder="••••••••"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
+                    className={errors.password ? "border-destructive" : ""}
                     required
                   />
                   <button
@@ -98,14 +248,44 @@ const AdminLogin = () => {
                     {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
                 </div>
+                {errors.password && (
+                  <p className="text-sm text-destructive">{errors.password}</p>
+                )}
               </div>
 
               <Button type="submit" className="w-full" size="lg" disabled={isLoading}>
-                {isLoading ? "Ingresando..." : "Ingresar"}
+                {isLoading ? (
+                  <span className="flex items-center gap-2">
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current" />
+                    {isSignUp ? "Creando cuenta..." : "Ingresando..."}
+                  </span>
+                ) : (
+                  <span className="flex items-center gap-2">
+                    {isSignUp ? <UserPlus className="w-4 h-4" /> : <LogIn className="w-4 h-4" />}
+                    {isSignUp ? "Crear cuenta" : "Ingresar"}
+                  </span>
+                )}
               </Button>
             </form>
 
-            <p className="text-center text-sm text-muted-foreground mt-6">
+            <div className="mt-6 pt-6 border-t">
+              <button
+                type="button"
+                onClick={() => {
+                  setIsSignUp(!isSignUp);
+                  setErrors({});
+                }}
+                className="w-full text-center text-sm text-muted-foreground hover:text-foreground transition-colors"
+              >
+                {isSignUp ? (
+                  <>¿Ya tienes cuenta? <span className="text-primary font-medium">Inicia sesión</span></>
+                ) : (
+                  <>¿Primera vez? <span className="text-primary font-medium">Crear cuenta admin</span></>
+                )}
+              </button>
+            </div>
+
+            <p className="text-center text-sm text-muted-foreground mt-4">
               ¿Problemas para acceder?{" "}
               <a href="mailto:soporte@sivermarket509.com" className="text-primary hover:underline">
                 Contactar soporte
