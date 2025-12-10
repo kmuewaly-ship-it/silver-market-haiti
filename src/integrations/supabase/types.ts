@@ -70,6 +70,163 @@ export type Database = {
           },
         ]
       }
+      categories: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          parent_id: string | null
+          slug: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          parent_id?: string | null
+          slug: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          parent_id?: string | null
+          slug?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "categories_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      product_price_history: {
+        Row: {
+          campo_modificado: string
+          created_at: string
+          id: string
+          modificado_por: string | null
+          product_id: string
+          valor_anterior: string | null
+          valor_nuevo: string | null
+        }
+        Insert: {
+          campo_modificado: string
+          created_at?: string
+          id?: string
+          modificado_por?: string | null
+          product_id: string
+          valor_anterior?: string | null
+          valor_nuevo?: string | null
+        }
+        Update: {
+          campo_modificado?: string
+          created_at?: string
+          id?: string
+          modificado_por?: string | null
+          product_id?: string
+          valor_anterior?: string | null
+          valor_nuevo?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_price_history_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      products: {
+        Row: {
+          categoria_id: string | null
+          created_at: string
+          descripcion_corta: string | null
+          descripcion_larga: string | null
+          dimensiones_cm: Json | null
+          galeria_imagenes: string[] | null
+          id: string
+          imagen_principal: string | null
+          is_active: boolean
+          moq: number
+          nombre: string
+          peso_kg: number | null
+          precio_mayorista: number
+          precio_sugerido_venta: number | null
+          proveedor_id: string | null
+          sku_interno: string
+          stock_fisico: number
+          stock_status: Database["public"]["Enums"]["stock_status"]
+          updated_at: string
+          url_origen: string | null
+        }
+        Insert: {
+          categoria_id?: string | null
+          created_at?: string
+          descripcion_corta?: string | null
+          descripcion_larga?: string | null
+          dimensiones_cm?: Json | null
+          galeria_imagenes?: string[] | null
+          id?: string
+          imagen_principal?: string | null
+          is_active?: boolean
+          moq?: number
+          nombre: string
+          peso_kg?: number | null
+          precio_mayorista?: number
+          precio_sugerido_venta?: number | null
+          proveedor_id?: string | null
+          sku_interno: string
+          stock_fisico?: number
+          stock_status?: Database["public"]["Enums"]["stock_status"]
+          updated_at?: string
+          url_origen?: string | null
+        }
+        Update: {
+          categoria_id?: string | null
+          created_at?: string
+          descripcion_corta?: string | null
+          descripcion_larga?: string | null
+          dimensiones_cm?: Json | null
+          galeria_imagenes?: string[] | null
+          id?: string
+          imagen_principal?: string | null
+          is_active?: boolean
+          moq?: number
+          nombre?: string
+          peso_kg?: number | null
+          precio_mayorista?: number
+          precio_sugerido_venta?: number | null
+          proveedor_id?: string | null
+          sku_interno?: string
+          stock_fisico?: number
+          stock_status?: Database["public"]["Enums"]["stock_status"]
+          updated_at?: string
+          url_origen?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "products_categoria_id_fkey"
+            columns: ["categoria_id"]
+            isOneToOne: false
+            referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "products_proveedor_id_fkey"
+            columns: ["proveedor_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -133,6 +290,39 @@ export type Database = {
         }
         Relationships: []
       }
+      suppliers: {
+        Row: {
+          contact_email: string | null
+          contact_phone: string | null
+          country: string | null
+          created_at: string
+          id: string
+          name: string
+          notes: string | null
+          updated_at: string
+        }
+        Insert: {
+          contact_email?: string | null
+          contact_phone?: string | null
+          country?: string | null
+          created_at?: string
+          id?: string
+          name: string
+          notes?: string | null
+          updated_at?: string
+        }
+        Update: {
+          contact_email?: string | null
+          contact_phone?: string | null
+          country?: string | null
+          created_at?: string
+          id?: string
+          name?: string
+          notes?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string
@@ -172,6 +362,7 @@ export type Database = {
       app_role: "admin" | "moderator" | "user"
       payment_method: "stripe" | "moncash" | "transfer"
       payment_status: "pending" | "verified" | "rejected"
+      stock_status: "in_stock" | "low_stock" | "out_of_stock"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -302,6 +493,7 @@ export const Constants = {
       app_role: ["admin", "moderator", "user"],
       payment_method: ["stripe", "moncash", "transfer"],
       payment_status: ["pending", "verified", "rejected"],
+      stock_status: ["in_stock", "low_stock", "out_of_stock"],
     },
   },
 } as const
