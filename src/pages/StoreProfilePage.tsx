@@ -4,6 +4,8 @@ import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/hooks/useAuth";
+import { UserRole } from "@/types/auth";
 import {
   Star,
   MessageCircle,
@@ -52,6 +54,7 @@ interface Product {
 const StoreProfilePage = () => {
   const { storeId } = useParams<{ storeId: string }>();
   const navigate = useNavigate();
+  const { role } = useAuth();
   const [store, setStore] = useState<StoreProfile | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -398,6 +401,7 @@ const StoreProfilePage = () => {
                     src={product.image}
                     alt={product.name}
                     className="w-full h-full object-cover group-hover:scale-110 transition duration-300"
+                    loading="lazy"
                   />
                   {product.discount && (
                     <div className="absolute top-2 left-2 bg-red-500 text-white px-2 py-1 rounded text-xs font-bold">
@@ -438,6 +442,31 @@ const StoreProfilePage = () => {
                   <p className="text-xs text-gray-500">
                     {product.sales.toLocaleString()} vendidos
                   </p>
+
+                  {/* Botones de Acción */}
+                  <div className="mt-3 space-y-2">
+                    {(role === UserRole.ADMIN || role === UserRole.SELLER) ? (
+                      <Button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          navigate(`/producto/${product.sku}`);
+                        }}
+                        className="w-full bg-green-600 text-white hover:bg-green-700"
+                      >
+                        Vender (Agregar al Carrito)
+                      </Button>
+                    ) : (
+                      <Button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          navigate(`/producto/${product.sku}`);
+                        }}
+                        className="w-full bg-blue-600 text-white hover:bg-blue-700"
+                      >
+                        Ver Detalles
+                      </Button>
+                    )}
+                  </div>
                 </div>
               </div>
             ))}

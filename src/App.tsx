@@ -1,11 +1,14 @@
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/hooks/useAuth";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import { UserRole } from "@/types/auth";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { ToastContainer } from "@/components/ToastContainer";
+import { useToast } from "@/hooks/useToastNotification";
+import { useState } from "react";
 
 // Public Pages
 import Index from "./pages/Index";
@@ -28,16 +31,15 @@ import AdminCategorias from "./pages/admin/AdminCategorias";
 import SellerAcquisicionLotes from "./pages/seller/SellerAcquisicionLotes";
 import SellerCheckout from "./pages/seller/SellerCheckout";
 
-const queryClient = new QueryClient();
+const AppContent = () => {
+  const { toasts, removeToast } = useToast();
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <BrowserRouter>
-        <AuthProvider>
-          <Toaster />
-          <Sonner />
-          <Routes>
+  return (
+    <>
+      <ToastContainer toasts={toasts} onRemove={removeToast} />
+      <Toaster />
+      <Sonner />
+      <Routes>
             {/* ========== PUBLIC ROUTES (B2C) ========== */}
             <Route path="/" element={<Index />} />
             <Route path="/marketplace" element={<Index />} />
@@ -106,10 +108,20 @@ const App = () => (
             {/* ========== 404 CATCH-ALL ========== */}
             <Route path="*" element={<NotFound />} />
           </Routes>
+    </>
+  );
+};
+
+const App = () => (
+  <ErrorBoundary>
+    <TooltipProvider>
+      <BrowserRouter>
+        <AuthProvider>
+          <AppContent />
         </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>
-  </QueryClientProvider>
+  </ErrorBoundary>
 );
 
 export default App;

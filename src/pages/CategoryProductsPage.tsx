@@ -5,6 +5,8 @@ import Footer from "@/components/layout/Footer";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ChevronRight, MapPin, Star, ShoppingBag } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/hooks/useAuth";
+import { UserRole } from "@/types/auth";
 
 interface Product {
   id: string;
@@ -32,8 +34,12 @@ interface FilterOptions {
 const CategoryProductsPage = () => {
   const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
+  const { role } = useAuth();
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const ITEMS_PER_PAGE = 12;
   const [filters, setFilters] = useState<FilterOptions>({
     sortBy: "newest",
     priceRange: [0, 1000],
@@ -220,6 +226,7 @@ const CategoryProductsPage = () => {
                   src={product.image}
                   alt={product.name}
                   className="w-full h-full object-cover group-hover:scale-110 transition duration-300"
+                  loading="lazy"
                 />
 
                 {/* Badges */}
@@ -285,17 +292,61 @@ const CategoryProductsPage = () => {
                 </div>
 
                 {/* Botón Comprar */}
-                <Button
-                  onClick={() => navigate(`/producto/${product.sku}`)}
-                  className="w-full mt-4 bg-blue-600 hover:bg-blue-700"
-                >
-                  <ShoppingBag className="w-4 h-4 mr-2" />
-                  Ver Detalles
-                </Button>
+                {(role === UserRole.ADMIN || role === UserRole.SELLER) ? (
+                  <Button
+                    className="w-full mt-4 bg-green-600 hover:bg-green-700"
+                  >
+                    <ShoppingBag className="w-4 h-4 mr-2" />
+                    Vender (Agregar al Carrito)
+                  </Button>
+                ) : (
+                  <Button
+                    onClick={() => navigate(`/producto/${product.sku}`)}
+                    className="w-full mt-4 bg-blue-600 hover:bg-blue-700"
+                  >
+                    <ShoppingBag className="w-4 h-4 mr-2" />
+                    Ver Detalles
+                  </Button>
+                )}
               </div>
             </div>
           ))}
         </div>
+
+        {/* Paginación */}
+        {totalPages > 1 && (
+          <div className="flex justify-center gap-2 mt-12">
+            <button
+              disabled={currentPage === 1}
+              onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
+              className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50"
+            >
+              Anterior
+            </button>
+
+            {Array.from({ length: totalPages }).map((_, i) => (
+              <button
+                key={i + 1}
+                onClick={() => setCurrentPage(i + 1)}
+                className={`px-4 py-2 rounded-lg ${
+                  currentPage === i + 1
+                    ? "bg-blue-600 text-white"
+                    : "border border-gray-300 hover:bg-gray-50"
+                }`}
+              >
+                {i + 1}
+              </button>
+            ))}
+
+            <button
+              disabled={currentPage === totalPages}
+              onClick={() => setCurrentPage((p) => Math.min(p + 1, totalPages))}
+              className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50"
+            >
+              Siguiente
+            </button>
+          </div>
+        )}
       </main>
 
       <Footer />

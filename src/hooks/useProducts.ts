@@ -1,0 +1,96 @@
+import { useQuery, useInfiniteQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { Product } from "@/types/products";
+
+export const useProducts = (page = 0, limit = 12) => {
+  return useQuery({
+    queryKey: ["products", page, limit],
+    queryFn: async () => {
+      const { data, error, count } = await supabase
+        .from("products")
+        .select("*", { count: "exact" })
+        .range(page * limit, (page + 1) * limit - 1)
+        .order("created_at", { ascending: false });
+
+      if (error) throw new Error(error.message);
+      return { products: data as Product[], total: count || 0 };
+    },
+  });
+};
+
+export const useProductBySkU = (sku: string) => {
+  return useQuery({
+    queryKey: ["product", sku],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("products")
+        .select("*")
+        .eq("sku", sku)
+        .single();
+
+      if (error) throw new Error(error.message);
+      return data as Product;
+    },
+    enabled: !!sku,
+  });
+};
+
+export const useProductsByCategory = (categoryId: string | null, page = 0, limit = 12) => {
+  return useQuery({
+    queryKey: ["products", "category", categoryId, page],
+    queryFn: async () => {
+      if (!categoryId) return { products: [], total: 0 };
+
+      const { data, error, count } = await supabase
+        .from("products")
+        .select("*", { count: "exact" })
+        .eq("category_id", categoryId)
+        .range(page * limit, (page + 1) * limit - 1)
+        .order("popularity", { ascending: false });
+
+      if (error) throw new Error(error.message);
+      return { products: data as Product[], total: count || 0 };
+    },
+    enabled: !!categoryId,
+  });
+};
+
+export const useSearchProducts = (query: string, page = 0, limit = 12) => {
+  return useQuery({
+    queryKey: ["products", "search", query, page],
+    queryFn: async () => {
+      if (!query) return { products: [], total: 0 };
+
+      const { data, error, count } = await supabase
+        .from("products")
+        .select("*", { count: "exact" })
+        .ilike("name", `%${query}%`)
+        .range(page * limit, (page + 1) * limit - 1);
+
+      if (error) throw new Error(error.message);
+      return { products: data as Product[], total: count || 0 };
+    },
+    enabled: !!query,
+  });
+};
+
+export const useInfiniteProducts = (limit = 12) => {
+  return useInfiniteQuery({
+    queryKey: ["products", "infinite"],
+    queryFn: async ({ pageParam = 0 }) => {
+      const { data, error, count } = await supabase
+        .from("products")
+        .select("*", { count: "exact" })
+        .range(pageParam * limit, (pageParam + 1) * limit - 1)
+        .order("created_at", { ascending: false });
+
+      if (error) throw new Error(error.message);
+      return {
+        products: data as Product[],
+        nextPage: (pageParam + 1) * limit < (count || 0) ? pageParam + 1 : undefined,
+      };
+    },
+    initialPageParam: 0,
+    getNextPageParam: (lastPage) => lastPage.nextPage,
+  });
+};

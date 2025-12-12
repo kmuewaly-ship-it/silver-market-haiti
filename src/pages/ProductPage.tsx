@@ -4,6 +4,8 @@ import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useAuth } from "@/hooks/useAuth";
+import { UserRole } from "@/types/auth";
 import {
   Star,
   Heart,
@@ -52,6 +54,7 @@ interface ProductDetail {
 const ProductPage = () => {
   const { sku } = useParams<{ sku: string }>();
   const navigate = useNavigate();
+  const { role } = useAuth();
   const [product, setProduct] = useState<ProductDetail | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedImage, setSelectedImage] = useState(0);
@@ -167,6 +170,7 @@ const ProductPage = () => {
                 src={product.images[selectedImage]}
                 alt={product.name}
                 className="w-full h-full object-cover"
+                loading="lazy"
               />
 
               {/* Descuento */}
@@ -219,7 +223,7 @@ const ProductPage = () => {
                       selectedImage === index ? "border-blue-600" : "border-transparent"
                     }`}
                   >
-                    <img src={image} alt={`Vista ${index + 1}`} className="w-full h-full object-cover" />
+                    <img src={image} alt={`Vista ${index + 1}`} className="w-full h-full object-cover" loading="lazy" />
                   </button>
                 ))}
               </div>
@@ -353,23 +357,56 @@ const ProductPage = () => {
               </div>
             </div>
 
+            {/* Info para ADMIN y SELLER */}
+            {(role === UserRole.ADMIN || role === UserRole.SELLER) && (
+              <div className="mb-6 p-4 bg-blue-50 border-l-4 border-blue-500 rounded">
+                <h4 className="font-semibold text-blue-900 mb-2">💼 Proceso B2B para Revendedores:</h4>
+                <ol className="text-sm text-blue-800 space-y-1 list-decimal list-inside">
+                  <li>Selecciona color, talla y cantidad del producto</li>
+                  <li>Haz click en "Vender" para agregar al carrito B2B</li>
+                  <li>Puedes agregar más productos para tu compra</li>
+                  <li>Una vez pagado, el producto se agregará a tu catálogo de tienda</li>
+                  <li>Los clientes podrán ver y comprar con el stock actualizado</li>
+                </ol>
+              </div>
+            )}
+
             {/* Botones de Acción */}
             <div className="space-y-3 mb-6">
-              <Button className="w-full bg-blue-600 hover:bg-blue-700 text-white py-6 text-lg font-bold">
-                <ShoppingCart className="w-5 h-5 mr-2" />
-                Comprar Ahora
-              </Button>
-              <Button className="w-full bg-orange-500 hover:bg-orange-600 text-white py-6 text-lg font-bold">
-                <Zap className="w-5 h-5 mr-2" />
-                Comprar Mayorista (B2B)
-              </Button>
-              <Button
-                variant="outline"
-                className="w-full border-gray-300 text-gray-700 hover:bg-gray-50 py-6"
-              >
-                <Heart className="w-5 h-5 mr-2" />
-                Añadir a Favoritos
-              </Button>
+              {/* Para ADMIN y SELLER - Botón Vender para agregar al carrito B2B */}
+              {(role === UserRole.ADMIN || role === UserRole.SELLER) ? (
+                <>
+                  <Button className="w-full bg-green-600 hover:bg-green-700 text-white py-6 text-lg font-bold">
+                    <ShoppingCart className="w-5 h-5 mr-2" />
+                    Vender (Agregar al Carrito B2B)
+                  </Button>
+                  <p className="text-sm text-gray-600 text-center">
+                    Agrega este producto al carrito para comprar y revender en tu tienda B2C
+                  </p>
+                  <Button
+                    variant="outline"
+                    className="w-full border-gray-300 text-gray-700 hover:bg-gray-50 py-6"
+                  >
+                    <Heart className="w-5 h-5 mr-2" />
+                    Añadir a Favoritos
+                  </Button>
+                </>
+              ) : (
+                /* Para CLIENT - Botón Comprar Normal */
+                <>
+                  <Button className="w-full bg-blue-600 hover:bg-blue-700 text-white py-6 text-lg font-bold">
+                    <ShoppingCart className="w-5 h-5 mr-2" />
+                    Comprar Ahora
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="w-full border-gray-300 text-gray-700 hover:bg-gray-50 py-6"
+                  >
+                    <Heart className="w-5 h-5 mr-2" />
+                    Añadir a Favoritos
+                  </Button>
+                </>
+              )}
             </div>
 
             {/* Vendedor */}
