@@ -19,6 +19,9 @@ import SellerRegistrationPage from "./pages/SellerRegistrationPage";
 import CategoriesPage from "./pages/CategoriesPage";
 import CategoryProductsPage from "./pages/CategoryProductsPage";
 import StoreProfilePage from "./pages/StoreProfilePage";
+import AccountPage from "./pages/AccountPage";
+import CartPage from "./pages/CartPage";
+import FavoritesPage from "./pages/FavoritesPage";
 
 // Admin Pages
 import AdminLogin from "./pages/admin/AdminLogin";
@@ -31,6 +34,9 @@ import AdminCategorias from "./pages/admin/AdminCategorias";
 import SellerAcquisicionLotes from "./pages/seller/SellerAcquisicionLotes";
 import SellerCheckout from "./pages/seller/SellerCheckout";
 import SellerCatalogo from "./pages/seller/SellerCatalogo";
+import SellerAccountPage from "./pages/seller/SellerAccountPage";
+import SellerCartPage from "./pages/seller/SellerCartPage";
+import SellerFavoritesPage from "./pages/seller/SellerFavoritesPage";
 
 const AppContent = () => {
   const { toasts, removeToast } = useToast();
@@ -48,6 +54,9 @@ const AppContent = () => {
             <Route path="/categoria/:slug" element={<CategoryProductsPage />} />
             <Route path="/tienda/:storeId" element={<StoreProfilePage />} />
             <Route path="/producto/:sku" element={<ProductPage />} />
+            <Route path="/cuenta" element={<AccountPage />} />
+            <Route path="/carrito" element={<CartPage />} />
+            <Route path="/favoritos" element={<FavoritesPage />} />
             
             {/* Seller Registration Landing Page */}
             <Route path="/registro-vendedor" element={<SellerRegistrationPage />} />
@@ -110,6 +119,30 @@ const AppContent = () => {
               element={
                 <ProtectedRoute requiredRoles={[UserRole.SELLER, UserRole.ADMIN]}>
                   <SellerCatalogo />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/seller/cuenta" 
+              element={
+                <ProtectedRoute requiredRoles={[UserRole.SELLER, UserRole.ADMIN]}>
+                  <SellerAccountPage />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/seller/carrito" 
+              element={
+                <ProtectedRoute requiredRoles={[UserRole.SELLER, UserRole.ADMIN]}>
+                  <SellerCartPage />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/seller/favoritos" 
+              element={
+                <ProtectedRoute requiredRoles={[UserRole.SELLER, UserRole.ADMIN]}>
+                  <SellerFavoritesPage />
                 </ProtectedRoute>
               } 
             />
