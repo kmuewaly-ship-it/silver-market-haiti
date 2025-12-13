@@ -9,6 +9,7 @@ import CategoryCard from "@/components/landing/CategoryCard";
 
 const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [openMobileCategory, setOpenMobileCategory] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
 
   const { data: categories = [], isLoading: categoriesLoading } = usePublicCategories();
@@ -141,21 +142,50 @@ const Header = () => {
       {isMenuOpen && (
         <div className="md:hidden bg-white border-t border-gray-200">
           <div className="container mx-auto px-4 py-4">
-            <Input
-              type="text"
-              placeholder="Buscar..."
-              className="w-full mb-4 rounded-full"
-            />
+            <Input type="text" placeholder="Buscar..." className="w-full mb-4 rounded-full" />
+
             <nav className="flex flex-col gap-2">
-              {categories.map((cat) => (
-                <Link
-                  key={cat.href}
-                  to={cat.href}
-                  className="py-2 px-4 hover:bg-gray-50 rounded text-gray-700"
-                >
-                  {cat.label}
-                </Link>
-              ))}
+              {rootCategories.map((cat) => {
+                const subs = getSubcategories(cat.id);
+                const isOpen = openMobileCategory === cat.id;
+                return (
+                  <div key={cat.id} className="border-b border-gray-100">
+                    <button
+                      onClick={() => setOpenMobileCategory(isOpen ? null : cat.id)}
+                      className="w-full text-left py-3 px-2 flex items-center justify-between text-gray-800 hover:bg-gray-50"
+                    >
+                      <span className="font-medium">{cat.name}</span>
+                      <span className="text-sm text-gray-500">{subs.length > 0 ? (isOpen ? "-" : "+") : ""}</span>
+                    </button>
+
+                    {isOpen && subs.length > 0 && (
+                      <div className="px-2 py-2 bg-white">
+                        <div className="grid grid-cols-3 gap-2">
+                          {subs.map((sub) => (
+                            <Link
+                              key={sub.id}
+                              to={`/categoria/${sub.slug}`}
+                              onClick={() => setIsMenuOpen(false)}
+                              className="flex flex-col items-center text-center p-2"
+                            >
+                              <div className="w-16 h-16 rounded-full overflow-hidden bg-muted flex items-center justify-center mb-2 border border-border">
+                                {sub.icon ? (
+                                  <img src={sub.icon} alt={sub.name} className="w-full h-full object-cover" />
+                                ) : (
+                                  <div className="w-full h-full bg-muted flex items-center justify-center">
+                                    <span className="text-xl text-muted-foreground">{sub.name.charAt(0).toUpperCase()}</span>
+                                  </div>
+                                )}
+                              </div>
+                              <div className="text-xs text-gray-700">{sub.name}</div>
+                            </Link>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </nav>
           </div>
         </div>
