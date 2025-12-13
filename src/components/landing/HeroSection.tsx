@@ -8,8 +8,7 @@ const HeroSection = () => {
     {
       id: 1,
       title: "Navidad",
-      // Prefer a project-local image in `public/hero-1.jpg` — falls back to placeholder if missing
-      image: "/hero-1.jpg",
+      image: "/navidad-1.png",
       fallback:
         "https://images.unsplash.com/photo-1482684364924-3be32fe17ce9?w=1200&h=400&fit=crop",
       color: "bg-red-600",
@@ -17,18 +16,10 @@ const HeroSection = () => {
     {
       id: 2,
       title: "Súper Rebajas",
-      image: "/hero-2.jpg",
+      image: "/navidad-2.png",
       fallback:
         "https://images.unsplash.com/photo-1607082348824-0a96f2a4b9da?w=1200&h=400&fit=crop",
       color: "bg-orange-600",
-    },
-    {
-      id: 3,
-      title: "Top Ventas",
-      image: "/hero-3.jpg",
-      fallback:
-        "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=1200&h=400&fit=crop",
-      color: "bg-purple-600",
     },
   ];
 
