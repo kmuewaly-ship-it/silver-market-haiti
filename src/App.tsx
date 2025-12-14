@@ -22,6 +22,7 @@ import StoreProfilePage from "./pages/StoreProfilePage";
 import AccountPage from "./pages/AccountPage";
 import CartPage from "./pages/CartPage";
 import FavoritesPage from "./pages/FavoritesPage";
+import LoginPage from "./pages/LoginPage";
 
 // Admin Pages
 import AdminLogin from "./pages/admin/AdminLogin";
@@ -57,6 +58,10 @@ const AppContent = () => {
             <Route path="/cuenta" element={<AccountPage />} />
             <Route path="/carrito" element={<CartPage />} />
             <Route path="/favoritos" element={<FavoritesPage />} />
+            
+            {/* Auth Routes */}
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/seller/login" element={<LoginPage />} />
             
             {/* Seller Registration Landing Page */}
             <Route path="/registro-vendedor" element={<SellerRegistrationPage />} />
