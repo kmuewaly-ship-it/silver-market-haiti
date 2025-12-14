@@ -369,7 +369,7 @@ const SellerRegistrationPage = () => {
                     </>
                   ) : (
                     <>
-                      Solicitar Acceso
+                      Crear Cuenta
                       <ArrowRight className="w-4 h-4" />
                     </>
                   )}
