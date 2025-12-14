@@ -9,7 +9,6 @@ import { UserRole } from "@/types/auth";
 import { SellerLayout } from "@/components/seller/SellerLayout";
 
 const AccountPage = () => {
-  // Main account page component
   const { user, logout, role } = useAuth();
 
   if (!user) {
@@ -19,11 +18,11 @@ const AccountPage = () => {
         <main className="flex-1 container mx-auto px-4 pb-8 flex items-center justify-center">
           <Card className="w-full max-w-md">
             <CardHeader>
-              <CardTitle className="text-center">Iniciar Sesi贸n</CardTitle>
+              <CardTitle className="text-center">Iniciar Sesi髇</CardTitle>
             </CardHeader>
             <CardContent className="text-center">
               <p className="mb-4 text-muted-foreground">
-                Por favor inicia sesi贸n para ver tu perfil.
+                Por favor inicia sesi髇 para ver tu perfil.
               </p>
               <Link to="/login">
                 <Button className="w-full">Ir al Login</Button>
@@ -47,7 +46,7 @@ const AccountPage = () => {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <User className="h-5 w-5" />
-                Informaci贸n Personal
+                Informaci髇 Personal
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -96,15 +95,19 @@ const AccountPage = () => {
               </Button>
               <Button variant="outline" className="w-full justify-start gap-2">
                 <MapPin className="h-4 w-4" />
-                Direcciones de Env铆o
+                Direcciones de Env韔
               </Button>
               <Button variant="outline" className="w-full justify-start gap-2">
                 <Settings className="h-4 w-4" />
-                Configuraci贸n
+                Configuraci髇
               </Button>
-              <Button variant="destructive" className="w-full justify-start gap-2" onClick={logout}>
+              <Button 
+                variant="destructive" 
+                className="w-full justify-start gap-2"
+                onClick={logout}
+              >
                 <LogOut className="h-4 w-4" />
-                Cerrar Sesi贸n
+                Cerrar Sesi髇
               </Button>
             </CardContent>
           </Card>

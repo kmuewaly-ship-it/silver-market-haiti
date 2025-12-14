@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+﻿import { useState, useRef, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Menu, X, ShoppingBag, Search, Heart, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -64,12 +64,12 @@ const Header = () => {
           <div className="flex items-center justify-between h-10 text-xs text-gray-600">
             <div className="flex items-center gap-4">
               <span>Envío desde el extranjero</span>
-              <span>•</span>
+              <span></span>
               <span>Devolución Gratis</span>
             </div>
             <div className="flex items-center gap-4">
               <button>Centro de Ayuda</button>
-              <span>•</span>
+              <span></span>
               <Link to="/admin/login">Vender</Link>
             </div>
           </div>
@@ -105,9 +105,9 @@ const Header = () => {
           <div className="hidden md:flex items-center gap-6">
             <Link to="/favoritos" className="flex flex-col items-center gap-1 text-gray-700 hover:text-red-500 transition">
               <Heart className="w-6 h-6" />
-              <span c{accountLink}"text-xs">Favoritos</span>
+              <span className="text-xs">Favoritos</span>
             </Link>
-            <Link to="/cuenta" className="flex flex-col items-center gap-1 text-gray-700 hover:text-red-500 transition">
+            <Link to={accountLink} className="flex flex-col items-center gap-1 text-gray-700 hover:text-red-500 transition">
               <User className="w-6 h-6" />
               <span className="text-xs">Cuenta</span>
             </Link>
@@ -212,9 +212,9 @@ const Header = () => {
               <div className="flex items-center justify-around py-4 border-b border-gray-100">
                 <Link to="/favoritos" className="flex flex-col items-center gap-1 text-gray-700" onClick={() => setIsMenuOpen(false)}>
                   <Heart className="w-6 h-6" />
-                  <span c{accountLink}"text-xs">Favoritos</span>
+                  <span className="text-xs">Favoritos</span>
                 </Link>
-                <Link to="/cuenta" className="flex flex-col items-center gap-1 text-gray-700" onClick={() => setIsMenuOpen(false)}>
+                <Link to={accountLink} className="flex flex-col items-center gap-1 text-gray-700" onClick={() => setIsMenuOpen(false)}>
                   <User className="w-6 h-6" />
                   <span className="text-xs">Cuenta</span>
                 </Link>
