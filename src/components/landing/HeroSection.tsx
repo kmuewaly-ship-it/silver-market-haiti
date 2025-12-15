@@ -59,7 +59,7 @@ const HeroSection = () => {
   };
 
   return (
-    <section className="relative w-full h-96 overflow-hidden">
+    <section className="relative w-full h-48 sm:h-64 md:h-80 lg:h-96 overflow-hidden">
       {/* Carousel Container */}
       <div className="relative w-full h-full">
         {slides.map((slide, index) => (
@@ -72,7 +72,7 @@ const HeroSection = () => {
             <img
               src={slide.image}
               alt={slide.title}
-              className="w-full h-full object-cover"
+              className="w-full h-full object-cover object-center"
               onError={(e) => {
                 const img = e.currentTarget as HTMLImageElement;
                 // try fallback then placeholder
@@ -87,27 +87,27 @@ const HeroSection = () => {
         ))}
       </div>
 
-      {/* Navigation Arrows */}
+      {/* Navigation Arrows - smaller on mobile */}
       <button
         onClick={prevSlide}
-        className="absolute left-4 top-1/2 transform -translate-y-1/2 z-20 bg-white/30 hover:bg-white/50 p-2 rounded-full transition"
+        className="absolute left-2 sm:left-4 top-1/2 transform -translate-y-1/2 z-20 bg-white/30 hover:bg-white/50 p-1.5 sm:p-2 rounded-full transition"
       >
-        <ChevronLeft className="w-6 h-6 text-white" />
+        <ChevronLeft className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 text-white" />
       </button>
       <button
         onClick={nextSlide}
-        className="absolute right-4 top-1/2 transform -translate-y-1/2 z-20 bg-white/30 hover:bg-white/50 p-2 rounded-full transition"
+        className="absolute right-2 sm:right-4 top-1/2 transform -translate-y-1/2 z-20 bg-white/30 hover:bg-white/50 p-1.5 sm:p-2 rounded-full transition"
       >
-        <ChevronRight className="w-6 h-6 text-white" />
+        <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 text-white" />
       </button>
 
-      {/* Dots */}
-      <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 z-20 flex gap-2">
+      {/* Dots - smaller on mobile */}
+      <div className="absolute bottom-2 sm:bottom-4 left-1/2 transform -translate-x-1/2 z-20 flex gap-1.5 sm:gap-2">
         {slides.map((_, index) => (
           <button
             key={index}
             onClick={() => goToSlide(index)}
-            className={`w-3 h-3 rounded-full transition ${
+            className={`w-2 h-2 sm:w-3 sm:h-3 rounded-full transition ${
               index === currentSlide ? "bg-white" : "bg-white/50"
             }`}
           />
