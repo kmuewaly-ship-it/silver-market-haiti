@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { NavLink } from "@/components/NavLink";
+import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import {
   Sidebar,
@@ -43,6 +44,7 @@ const settingsItems = [
 
 export function AdminSidebar() {
   const { state, toggleSidebar } = useSidebar();
+  const { signOut } = useAuth();
   const isCollapsed = state === "collapsed";
 
   return (
@@ -147,6 +149,7 @@ export function AdminSidebar() {
         <Button 
           variant="ghost" 
           className="w-full justify-start gap-3 text-muted-foreground hover:text-destructive"
+          onClick={signOut}
         >
           <LogOut className="h-5 w-5" />
           {!isCollapsed && <span>Cerrar Sesión</span>}
