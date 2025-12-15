@@ -9,7 +9,8 @@ import {
   ShoppingBag,
   ChevronLeft,
   FolderTree,
-  ShoppingCart
+  ShoppingCart,
+  Image as ImageIcon
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { NavLink } from "@/components/NavLink";
@@ -36,6 +37,7 @@ const mainNavItems = [
   { title: "Catálogo", url: "/admin/catalogo", icon: Package },
   { title: "Categorías", url: "/admin/categorias", icon: FolderTree },
   { title: "Vendedores", url: "/admin/vendedores", icon: Users },
+  { title: "Banners", url: "/admin/banners", icon: ImageIcon },
   { title: "Puntos de Recogida", url: "/admin/puntos", icon: MapPin },
 ];
 

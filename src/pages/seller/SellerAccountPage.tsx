@@ -22,6 +22,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useSellerStatuses } from "@/hooks/useSellerStatuses";
 import { SellerStatusUpload } from "@/components/seller/SellerStatusUpload";
 import { SellerStatusViewer } from "@/components/seller/SellerStatusViewer";
+import { useAdminBanners } from "@/hooks/useAdminBanners";
 
 const SellerAccountPage = () => {
   const navigate = useNavigate();
@@ -34,6 +35,10 @@ const SellerAccountPage = () => {
   
   // Statuses hook
   const { statuses, uploadStatus, deleteStatus, loading: statusesLoading } = useSellerStatuses(store?.id || null);
+  
+  // Admin banners for sellers
+  const { banners: adminBanners } = useAdminBanners('sellers');
+  const activeBanner = adminBanners.find(b => b.is_active);
 
   // Fetch seller verification status
   const { data: seller } = useQuery({
@@ -127,8 +132,21 @@ const SellerAccountPage = () => {
       <div className="min-h-screen bg-gray-50/50 pb-12 w-full font-sans">
         {/* Modern Hero Section */}
         <div className="relative h-64 w-full overflow-hidden group">
-            <div className="absolute inset-0 bg-gradient-to-br from-[#071d7f] via-[#0a2a9f] to-[#051560]" />
-            <div className="absolute inset-0 opacity-10 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] mix-blend-overlay" />
+            {activeBanner ? (
+              <>
+                <img 
+                  src={activeBanner.image_url} 
+                  alt={activeBanner.title}
+                  className="absolute inset-0 w-full h-full object-cover"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
+              </>
+            ) : (
+              <>
+                <div className="absolute inset-0 bg-gradient-to-br from-[#071d7f] via-[#0a2a9f] to-[#051560]" />
+                <div className="absolute inset-0 opacity-10 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] mix-blend-overlay" />
+              </>
+            )}
             
             {/* Decorative circles */}
             <div className="absolute top-0 right-0 -mt-20 -mr-20 w-96 h-96 bg-white/5 rounded-full blur-3xl" />

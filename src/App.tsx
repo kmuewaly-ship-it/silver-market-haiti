@@ -31,6 +31,7 @@ import AdminConciliacion from "./pages/admin/AdminConciliacion";
 import AdminCatalogo from "./pages/admin/AdminCatalogo";
 import AdminCategorias from "./pages/admin/AdminCategorias";
 import AdminVendedores from "./pages/admin/AdminVendedores";
+import AdminBanners from "./pages/admin/AdminBanners";
 
 // Seller Pages
 import SellerAcquisicionLotes from "./pages/seller/SellerAcquisicionLotes";
@@ -115,6 +116,14 @@ const AppContent = () => {
               element={
                 <ProtectedRoute requiredRoles={[UserRole.ADMIN]}>
                   <AdminVendedores />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/admin/banners" 
+              element={
+                <ProtectedRoute requiredRoles={[UserRole.ADMIN]}>
+                  <AdminBanners />
                 </ProtectedRoute>
               } 
             />
