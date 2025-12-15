@@ -42,23 +42,37 @@ const CategoriesPage = () => {
   // Loading skeleton
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-background">
+      <div className="min-h-screen bg-white">
         {isMobile ? (
           <>
-            <div className="h-24 bg-background border-b border-border" />
-            <div className="flex h-[calc(100vh-24px-56px)]">
-              <div className="w-32 bg-background border-r border-border p-2 space-y-2">
-                {Array.from({ length: 10 }).map((_, i) => (
+            {/* Header skeleton */}
+            <div className="px-3 py-2.5 flex items-center gap-3">
+              <Skeleton className="w-6 h-6 rounded" />
+              <Skeleton className="flex-1 h-10 rounded-full" />
+              <Skeleton className="w-6 h-6 rounded" />
+            </div>
+            <div className="px-3 py-2 flex gap-5 border-b border-gray-100">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <Skeleton key={i} className="h-5 w-12" />
+              ))}
+            </div>
+            {/* Content skeleton */}
+            <div className="flex h-[calc(100vh-100px-56px)]">
+              <div className="w-[140px] bg-white border-r border-gray-100 p-2 space-y-2">
+                {Array.from({ length: 12 }).map((_, i) => (
                   <Skeleton key={i} className="h-8 w-full" />
                 ))}
               </div>
-              <div className="flex-1 p-4 grid grid-cols-3 gap-3">
-                {Array.from({ length: 9 }).map((_, i) => (
-                  <div key={i} className="flex flex-col items-center gap-2">
-                    <Skeleton className="w-16 h-16 rounded-full" />
-                    <Skeleton className="h-3 w-12" />
-                  </div>
-                ))}
+              <div className="flex-1 p-4">
+                <Skeleton className="h-6 w-24 mb-4" />
+                <div className="grid grid-cols-3 gap-3">
+                  {Array.from({ length: 9 }).map((_, i) => (
+                    <div key={i} className="flex flex-col items-center gap-2">
+                      <Skeleton className="w-[72px] h-[72px] rounded-full" />
+                      <Skeleton className="h-3 w-14" />
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
           </>
@@ -82,7 +96,7 @@ const CategoriesPage = () => {
   // Mobile layout with sidebar
   if (isMobile) {
     return (
-      <div className="min-h-screen bg-background flex flex-col">
+      <div className="min-h-screen bg-white flex flex-col">
         {/* Mobile header with search and category tabs */}
         <MobileCategoryHeader
           categories={categories}
