@@ -37,7 +37,7 @@ const AdminLogin = () => {
     // If there's a session, user is logged in - redirect based on role
     if (session) {
       if (role === 'admin') {
-        navigate("/admin", { replace: true });
+        navigate("/admin/dashboard", { replace: true });
       } else if (role === 'seller') {
         navigate("/seller/adquisicion-lotes", { replace: true });
       } else {
