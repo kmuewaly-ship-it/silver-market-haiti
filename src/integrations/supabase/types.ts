@@ -657,6 +657,8 @@ export type Database = {
       stores: {
         Row: {
           banner: string | null
+          city: string | null
+          country: string | null
           created_at: string | null
           description: string | null
           id: string
@@ -670,6 +672,8 @@ export type Database = {
         }
         Insert: {
           banner?: string | null
+          city?: string | null
+          country?: string | null
           created_at?: string | null
           description?: string | null
           id?: string
@@ -683,6 +687,8 @@ export type Database = {
         }
         Update: {
           banner?: string | null
+          city?: string | null
+          country?: string | null
           created_at?: string | null
           description?: string | null
           id?: string

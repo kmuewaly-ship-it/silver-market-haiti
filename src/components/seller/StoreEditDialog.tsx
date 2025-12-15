@@ -17,6 +17,8 @@ interface StoreEditDialogProps {
     description: string | null;
     logo: string | null;
     banner: string | null;
+    country: string | null;
+    city: string | null;
   } | null;
 }
 
@@ -31,6 +33,8 @@ export function StoreEditDialog({ store }: StoreEditDialogProps) {
   const [description, setDescription] = useState(store?.description || "");
   const [logo, setLogo] = useState(store?.logo || "");
   const [banner, setBanner] = useState(store?.banner || "");
+  const [country, setCountry] = useState(store?.country || "Haiti");
+  const [city, setCity] = useState(store?.city || "");
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const logoInputRef = useRef<HTMLInputElement>(null);
@@ -154,6 +158,8 @@ export function StoreEditDialog({ store }: StoreEditDialogProps) {
           description,
           logo,
           banner,
+          country,
+          city,
           updated_at: new Date().toISOString()
         })
         .eq("id", store.id);
@@ -377,9 +383,31 @@ export function StoreEditDialog({ store }: StoreEditDialogProps) {
               id="description"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              className="col-span-3 min-h-[120px]"
+              className="col-span-3 min-h-[100px]"
               placeholder="Describe tu negocio, productos y servicios..."
             />
+          </div>
+
+          {/* Location fields */}
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="country">País</Label>
+              <Input
+                id="country"
+                value={country}
+                onChange={(e) => setCountry(e.target.value)}
+                placeholder="Ej: Haiti"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="city">Ciudad</Label>
+              <Input
+                id="city"
+                value={city}
+                onChange={(e) => setCity(e.target.value)}
+                placeholder="Ej: Port-au-Prince"
+              />
+            </div>
           </div>
         </div>
         <div className="flex justify-end gap-3">

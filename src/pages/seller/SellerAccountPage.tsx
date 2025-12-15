@@ -132,9 +132,11 @@ const SellerAccountPage = () => {
                                     )}
                                 </div>
                                 <p className="text-blue-100/80 flex items-center gap-2 mt-2 text-lg">
-                                    <Globe className="h-4 w-4" />
-                                    <span className="hover:underline cursor-pointer transition-colors hover:text-white">
-                                        {store?.id ? `${window.location.origin}/tienda/${store.id}` : "Configura tu URL personalizada"}
+                                    <MapPin className="h-4 w-4" />
+                                    <span>
+                                        {store?.city && store?.country 
+                                          ? `${store.city}, ${store.country}` 
+                                          : store?.country || "Ubicación no configurada"}
                                     </span>
                                 </p>
                             </div>

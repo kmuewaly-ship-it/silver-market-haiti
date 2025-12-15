@@ -16,6 +16,8 @@ export interface StoreProfile {
   created_at: string;
   updated_at: string;
   metadata: any;
+  country: string | null;
+  city: string | null;
 }
 
 export const useStore = (storeId: string | undefined) => {
