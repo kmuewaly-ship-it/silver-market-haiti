@@ -8,17 +8,17 @@ interface CategoryCardProps {
 
 const CategoryCard = ({ label, image, href = '#' }: CategoryCardProps) => {
   return (
-    <Link to={href} className="group flex flex-col items-center text-center">
-      <div className="w-28 h-28 md:w-32 md:h-32 rounded-full overflow-hidden bg-muted flex items-center justify-center mb-3 transition-transform transform group-hover:scale-105 border border-border">
+    <Link to={href} className="group flex flex-col items-center text-center flex-shrink-0">
+      <div className="w-16 h-16 sm:w-20 sm:h-20 md:w-28 md:h-28 lg:w-32 lg:h-32 rounded-full overflow-hidden bg-muted flex items-center justify-center mb-2 md:mb-3 transition-transform transform group-hover:scale-105 border border-border">
         {image ? (
           <img src={image} alt={label} className="w-full h-full object-cover" />
         ) : (
           <div className="w-full h-full bg-muted flex items-center justify-center">
-            <span className="text-3xl text-muted-foreground">{label.charAt(0).toUpperCase()}</span>
+            <span className="text-xl sm:text-2xl md:text-3xl text-muted-foreground">{label.charAt(0).toUpperCase()}</span>
           </div>
         )}
       </div>
-      <div className="text-sm md:text-base text-foreground max-w-xs">
+      <div className="text-xs sm:text-sm md:text-base text-foreground max-w-[70px] sm:max-w-[80px] md:max-w-xs line-clamp-2">
         {label}
       </div>
     </Link>
