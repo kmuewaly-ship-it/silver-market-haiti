@@ -6,12 +6,13 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useCatalog, Product, ProductFilters } from '@/hooks/useCatalog';
-import { Package, AlertTriangle, TrendingDown, Search, Upload, Plus, Download, Settings, Loader2 } from 'lucide-react';
+import { Package, AlertTriangle, TrendingDown, Search, Upload, Plus, Download, Settings, Loader2, Cpu } from 'lucide-react';
 import BulkImportDialog from '@/components/catalog/BulkImportDialog';
 import ProductFormDialog from '@/components/catalog/ProductFormDialog';
 import ProductEditDialog from '@/components/catalog/ProductEditDialog';
+import ProductEmbeddingsManager from '@/components/admin/ProductEmbeddingsManager';
 
 const AdminCatalogo = () => {
   const { useProducts, useCategories, useSuppliers, useCatalogKPIs } = useCatalog();
@@ -68,8 +69,19 @@ const AdminCatalogo = () => {
 
   return (
     <AdminLayout title="Catálogo Maestro B2B" subtitle="Logística Central - Gestión de Inventario">
-      <div className="space-y-6">
-        {/* Actions Header */}
+      <Tabs defaultValue="productos" className="space-y-6">
+        <TabsList>
+          <TabsTrigger value="productos" className="gap-2">
+            <Package className="h-4 w-4" />
+            Productos
+          </TabsTrigger>
+          <TabsTrigger value="embeddings" className="gap-2">
+            <Cpu className="h-4 w-4" />
+            IA / Embeddings
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="productos" className="space-y-6">
         <div className="flex flex-col md:flex-row md:items-center md:justify-end gap-4">
           <div className="flex flex-wrap gap-2">
             <Button variant="outline" onClick={() => setBulkImportOpen(true)}>
@@ -265,8 +277,12 @@ const AdminCatalogo = () => {
             </div>
           </CardContent>
         </Card>
-      </div>
+        </TabsContent>
 
+        <TabsContent value="embeddings">
+          <ProductEmbeddingsManager />
+        </TabsContent>
+      </Tabs>
       {/* Dialogs */}
       <BulkImportDialog open={bulkImportOpen} onOpenChange={setBulkImportOpen} />
       <ProductFormDialog open={newProductOpen} onOpenChange={setNewProductOpen} />
