@@ -480,6 +480,7 @@ export type Database = {
           descripcion_corta: string | null
           descripcion_larga: string | null
           dimensiones_cm: Json | null
+          embedding: string | null
           galeria_imagenes: string[] | null
           id: string
           imagen_principal: string | null
@@ -502,6 +503,7 @@ export type Database = {
           descripcion_corta?: string | null
           descripcion_larga?: string | null
           dimensiones_cm?: Json | null
+          embedding?: string | null
           galeria_imagenes?: string[] | null
           id?: string
           imagen_principal?: string | null
@@ -524,6 +526,7 @@ export type Database = {
           descripcion_corta?: string | null
           descripcion_larga?: string | null
           dimensiones_cm?: Json | null
+          embedding?: string | null
           galeria_imagenes?: string[] | null
           id?: string
           imagen_principal?: string | null
@@ -870,6 +873,42 @@ export type Database = {
       }
       is_admin: { Args: { _user_id: string }; Returns: boolean }
       is_seller: { Args: { _user_id: string }; Returns: boolean }
+      match_products: {
+        Args: {
+          match_count: number
+          match_threshold: number
+          query_embedding: string
+        }
+        Returns: {
+          categoria_id: string | null
+          created_at: string
+          descripcion_corta: string | null
+          descripcion_larga: string | null
+          dimensiones_cm: Json | null
+          embedding: string | null
+          galeria_imagenes: string[] | null
+          id: string
+          imagen_principal: string | null
+          is_active: boolean
+          moq: number
+          nombre: string
+          peso_kg: number | null
+          precio_mayorista: number
+          precio_sugerido_venta: number | null
+          proveedor_id: string | null
+          sku_interno: string
+          stock_fisico: number
+          stock_status: Database["public"]["Enums"]["stock_status"]
+          updated_at: string
+          url_origen: string | null
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "products"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
     }
     Enums: {
       app_role: "admin" | "moderator" | "user" | "seller"

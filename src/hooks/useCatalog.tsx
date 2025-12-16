@@ -82,7 +82,7 @@ export const useCatalog = () => {
 
         const { data, error } = await query;
         if (error) throw error;
-        return data as Product[];
+        return data as unknown as Product[];
       },
     });
   };
@@ -102,7 +102,7 @@ export const useCatalog = () => {
           .eq('id', id)
           .single();
         if (error) throw error;
-        return data as Product;
+        return data as unknown as Product;
       },
       enabled: !!id,
     });

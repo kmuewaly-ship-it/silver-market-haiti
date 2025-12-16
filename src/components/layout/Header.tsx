@@ -1,31 +1,16 @@
 import { useState, useRef, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Menu, X, ShoppingBag, Search, Heart, User, Mail, Camera } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Menu, X, ShoppingBag, Search, Heart, User, Mail } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from "@/components/ui/dialog";
-import { cn } from "@/lib/utils";
-import { usePublicCategories, Category } from "@/hooks/useCategories";
+import { usePublicCategories } from "@/hooks/useCategories";
 import { useAuth } from "@/hooks/useAuth";
 import { UserRole } from "@/types/auth";
-import { useToast } from "@/hooks/use-toast";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { uploadSearchImage, searchProductsByImage } from "@/services/api/imageSearch";
 
 const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [openMobileCategory, setOpenMobileCategory] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedImage, setSelectedImage] = useState<string | null>(null);
-  const [isSearching, setIsSearching] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const { toast } = useToast();
   const isMobile = useIsMobile();
 
   const { data: categories = [], isLoading: categoriesLoading } = usePublicCategories();
@@ -62,61 +47,6 @@ const Header = () => {
     el.scrollBy({ left: dir * amount, behavior: "smooth" });
   };
 
-  const handleCameraClick = () => {
-    fileInputRef.current?.click();
-  };
-
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setSelectedImage(reader.result as string);
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
-  const handleImageSearch = async () => {
-    if (!fileInputRef.current?.files?.[0]) return;
-
-    setIsSearching(true);
-    try {
-      const file = fileInputRef.current.files[0];
-      
-      // 1. Upload image to get a public URL
-      // Note: This requires a 'temp-search-images' bucket in Supabase
-      const publicUrl = await uploadSearchImage(file);
-      
-      // 2. Call the search service
-      const products = await searchProductsByImage(publicUrl);
-      
-      // 3. Navigate to results
-      setSelectedImage(null);
-      navigate('/busqueda', { 
-        state: { 
-          products, 
-          type: 'image', 
-          imageUrl: selectedImage // Pass the base64 preview for immediate display
-        } 
-      });
-      
-      toast({
-        title: "Búsqueda completada",
-        description: `Se encontraron ${products.length} productos similares.`,
-      });
-    } catch (error) {
-      console.error("Search error:", error);
-      toast({
-        title: "Error",
-        description: "Hubo un problema al procesar la imagen. Asegúrate de tener configurado el bucket 'temp-search-images'.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsSearching(false);
-    }
-  };
-
   // Root categories (no parent)
   const rootCategories = categories.filter((c) => !c.parent_id);
 
@@ -142,27 +72,14 @@ const Header = () => {
             <div className="flex-1 flex items-center bg-gray-100 rounded-full border border-gray-200 overflow-hidden">
               <input
                 type="text"
-                placeholder="mens 2 piece outfits"
+                placeholder="Buscar productos..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="flex-1 bg-transparent text-sm text-gray-700 placeholder-gray-500 px-4 py-2 outline-none"
               />
-              <button 
-                className="p-2 text-gray-500 hover:text-gray-700 transition-colors"
-                onClick={handleCameraClick}
-              >
-                <Camera className="w-5 h-5" strokeWidth={1.5} />
-              </button>
               <button className="bg-gray-900 hover:bg-gray-800 p-2 rounded-full m-0.5 transition-colors">
                 <Search className="w-4 h-4 text-white" strokeWidth={2} />
               </button>
-              <input 
-                type="file" 
-                ref={fileInputRef} 
-                className="hidden" 
-                accept="image/*"
-                onChange={handleFileChange}
-              />
             </div>
 
             {/* Favorites heart */}
@@ -236,25 +153,11 @@ const Header = () => {
                 placeholder="Buscar productos..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-4 pr-20 py-2 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-red-500"
+                className="pl-4 pr-10 py-2 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-red-500"
               />
-              <div className="absolute right-3 top-1/2 transform -translate-y-1/2 flex items-center gap-2">
-                <button 
-                  onClick={handleCameraClick}
-                  className="text-gray-400 hover:text-red-500 transition-colors"
-                  title="Subir foto o usar cámara"
-                >
-                  <Camera className="w-5 h-5" />
-                </button>
+              <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
                 <Search className="w-5 h-5 text-gray-400" />
               </div>
-              <input 
-                type="file" 
-                ref={fileInputRef} 
-                className="hidden" 
-                accept="image/*"
-                onChange={handleFileChange}
-              />
             </div>
           </div>
 
@@ -421,56 +324,6 @@ const Header = () => {
 
     {/* spacer to push page content below fixed header */}
     <div aria-hidden style={{ height: headerHeight }} />
-
-    {/* Image Search Dialog */}
-    <Dialog open={!!selectedImage} onOpenChange={(open) => !open && setSelectedImage(null)}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>Búsqueda por Imagen</DialogTitle>
-        </DialogHeader>
-        <div className="flex flex-col items-center gap-4 py-4">
-          {selectedImage && (
-            <div className="relative w-full aspect-square max-h-[300px] rounded-lg overflow-hidden border border-gray-200">
-              <img 
-                src={selectedImage} 
-                alt="Selected for search" 
-                className="w-full h-full object-contain bg-gray-50" 
-              />
-            </div>
-          )}
-          <p className="text-sm text-gray-500 text-center">
-            Buscaremos productos visualmente similares a esta imagen.
-          </p>
-        </div>
-        <DialogFooter className="flex flex-col sm:flex-row gap-2 sm:justify-between">
-          <Button
-            variant="secondary"
-            onClick={() => fileInputRef.current?.click()}
-            disabled={isSearching}
-            className="w-full sm:w-auto"
-          >
-            Cambiar foto
-          </Button>
-          <div className="flex gap-2 w-full sm:w-auto">
-            <Button
-              variant="outline"
-              onClick={() => setSelectedImage(null)}
-              disabled={isSearching}
-              className="flex-1 sm:flex-none"
-            >
-              Cancelar
-            </Button>
-            <Button
-              onClick={handleImageSearch}
-              disabled={isSearching}
-              className="bg-red-600 hover:bg-red-700 flex-1 sm:flex-none"
-            >
-              {isSearching ? "Buscando..." : "Buscar"}
-            </Button>
-          </div>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
     </>
   );
 };
