@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Menu, X, ShoppingBag, Search, Heart, User, Mail, Camera, Loader2, TrendingUp } from "lucide-react";
+import { Menu, X, ShoppingBag, Search, Heart, User, Mail, Camera, Loader2, TrendingUp, Flame } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { usePublicCategories } from "@/hooks/useCategories";
 import { useAuth } from "@/hooks/useAuth";
@@ -220,6 +220,10 @@ const Header = () => {
 
           {/* Desktop Actions */}
           <div className="hidden md:flex items-center gap-6">
+            <Link to="/tendencias" className="flex flex-col items-center gap-1 text-gray-700 hover:text-red-500 transition">
+              <Flame className="w-6 h-6" />
+              <span className="text-xs">Tendencias</span>
+            </Link>
             <Link to="/favoritos" className="flex flex-col items-center gap-1 text-gray-700 hover:text-red-500 transition">
               <Heart className="w-6 h-6" />
               <span className="text-xs">Favoritos</span>
