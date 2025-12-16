@@ -127,6 +127,7 @@ const SellerAccountPage = () => {
 
   return (
     <SellerLayout>
+
       <div className="min-h-screen bg-gray-50/50 pb-12 w-full font-sans">
         {/* Modern Hero Section */}
         <div className="relative h-64 w-full overflow-hidden group">
@@ -149,7 +150,7 @@ const SellerAccountPage = () => {
             {/* Decorative circles */}
             <div className="absolute top-0 right-0 -mt-20 -mr-20 w-96 h-96 bg-white/5 rounded-full blur-3xl" />
             <div className="absolute bottom-0 left-0 -mb-20 -ml-20 w-72 h-72 bg-blue-400/10 rounded-full blur-2xl" />
-            
+
             <div className="container mx-auto px-6 h-full flex items-end pb-8 relative z-10">
                 <div className="flex flex-col md:flex-row md:items-end gap-6 w-full">
                     {/* Status Upload & Avatar */}
@@ -225,6 +226,7 @@ const SellerAccountPage = () => {
                         </div>
                     </div>
                 </div>
+
             </div>
         </div>
 
@@ -357,6 +359,7 @@ const SellerAccountPage = () => {
                         </div>
                     </CardContent>
                 </Card>
+
 
                 {/* Settings & Actions Grid */}
                 <div>

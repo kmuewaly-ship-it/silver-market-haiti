@@ -1,4 +1,4 @@
-﻿import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Menu, X, ShoppingBag, Search, Heart, User, Mail, Camera } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -7,12 +7,15 @@ import { cn } from "@/lib/utils";
 import { usePublicCategories, Category } from "@/hooks/useCategories";
 import { useAuth } from "@/hooks/useAuth";
 import { UserRole } from "@/types/auth";
+import { useToast } from "@/hooks/use-toast";
 import { useIsMobile } from "@/hooks/use-mobile";
 
 const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [openMobileCategory, setOpenMobileCategory] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const { toast } = useToast();
   const isMobile = useIsMobile();
 
   const { data: categories = [], isLoading: categoriesLoading } = usePublicCategories();
@@ -47,6 +50,22 @@ const Header = () => {
     if (!el) return;
     const amount = Math.max(el.clientWidth * 0.5, 240);
     el.scrollBy({ left: dir * amount, behavior: "smooth" });
+  };
+
+  const handleCameraClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      // Aquí iría la lógica de búsqueda por imagen
+      console.log("Imagen seleccionada:", file);
+      toast({
+        title: "Búsqueda visual",
+        description: "Procesando imagen... (Próximamente)",
+      });
+    }
   };
 
   // Root categories (no parent)
@@ -158,9 +177,25 @@ const Header = () => {
                 placeholder="Buscar productos..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-4 pr-10 py-2 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-red-500"
+                className="pl-4 pr-20 py-2 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-red-500"
               />
-              <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+              <div className="absolute right-3 top-1/2 transform -translate-y-1/2 flex items-center gap-2">
+                <button 
+                  onClick={handleCameraClick}
+                  className="text-gray-400 hover:text-red-500 transition-colors"
+                  title="Buscar por imagen"
+                >
+                  <Camera className="w-5 h-5" />
+                </button>
+                <Search className="w-5 h-5 text-gray-400" />
+              </div>
+              <input 
+                type="file" 
+                ref={fileInputRef} 
+                className="hidden" 
+                accept="image/*"
+                onChange={handleFileChange}
+              />
             </div>
           </div>
 

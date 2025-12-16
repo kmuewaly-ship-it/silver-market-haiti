@@ -58,6 +58,12 @@ const ProductEditDialog = ({ productId, open, onOpenChange }: ProductEditDialogP
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploadingImage, setUploadingImage] = useState(false);
   const [localImages, setLocalImages] = useState<string[]>([]);
+  const initializedRef = useRef(false);
+
+  // Reset initialized state when product changes
+  useEffect(() => {
+    initializedRef.current = false;
+  }, [productId]);
 
   // Fetch price history
   const { data: priceHistory } = useQuery({
@@ -111,7 +117,11 @@ const ProductEditDialog = ({ productId, open, onOpenChange }: ProductEditDialogP
         url_origen: product.url_origen || '',
         is_active: product.is_active,
       });
-      setLocalImages(product.galeria_imagenes || []);
+      
+      if (!initializedRef.current) {
+        setLocalImages(product.galeria_imagenes || []);
+        initializedRef.current = true;
+      }
     }
   }, [product, form]);
 
@@ -191,6 +201,16 @@ const ProductEditDialog = ({ productId, open, onOpenChange }: ProductEditDialogP
 
   const removeFromGallery = (url: string) => {
     setLocalImages(prev => prev.filter(img => img !== url));
+  };
+
+  const handleRemoveMainImage = async () => {
+    if (!confirm('¿Eliminar imagen principal?')) return;
+    
+    await updateProduct.mutateAsync({
+      id: productId,
+      updates: { imagen_principal: null },
+      userId: user?.id,
+    });
   };
 
   const handleDelete = async () => {
@@ -556,13 +576,22 @@ const ProductEditDialog = ({ productId, open, onOpenChange }: ProductEditDialogP
                   </CardHeader>
                   <CardContent>
                     {product?.imagen_principal ? (
-                      <div className="relative inline-block">
+                      <div className="relative inline-block group">
                         <img
                           src={product.imagen_principal}
                           alt={product.nombre}
                           className="h-40 w-40 rounded-lg object-cover border"
                         />
                         <Badge className="absolute top-2 left-2">Principal</Badge>
+                        <Button
+                          type="button"
+                          variant="destructive"
+                          size="icon"
+                          className="absolute -top-2 -right-2 h-6 w-6 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                          onClick={handleRemoveMainImage}
+                        >
+                          <X className="h-3 w-3" />
+                        </Button>
                       </div>
                     ) : (
                       <div className="h-40 w-40 rounded-lg border-2 border-dashed flex items-center justify-center text-muted-foreground">
