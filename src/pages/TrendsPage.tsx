@@ -12,9 +12,11 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 const TrendsPage = () => {
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
   const { data: productsData, isLoading: productsLoading } = useProducts(0, 50);
   const { data: categories, isLoading: categoriesLoading } = usePublicCategories();
   const { data: trendingProducts, isLoading: trendingLoading } = useTrendingProducts(7, 20);
@@ -152,7 +154,7 @@ const TrendsPage = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <Header />
+      {!isMobile && <Header />}
       
       {/* Hero Section */}
       <div className="bg-gray-900 text-white py-16 md:py-24 relative overflow-hidden">
@@ -174,7 +176,7 @@ const TrendsPage = () => {
         </div>
       </div>
 
-      <div className="container mx-auto px-4 py-12">
+      <div className={`container mx-auto px-4 py-12 ${isMobile ? 'pb-20' : ''}`}>
         {/* Filters Bar */}
         <div className="flex flex-wrap items-center justify-between gap-4 mb-8 bg-white p-4 rounded-lg shadow-sm">
           {/* Desktop Filters */}
@@ -374,7 +376,7 @@ const TrendsPage = () => {
           </section>
         </div>
       </div>
-      <Footer />
+      {!isMobile && <Footer />}
     </div>
   );
 };

@@ -82,7 +82,7 @@ const CategoriesPage = () => {
             </aside>
 
             {/* Content Area */}
-            <main className="flex-1 overflow-y-auto p-4 pb-24 bg-white">
+            <main className="flex-1 overflow-y-auto p-4 pb-20 bg-white">
                 {selectedCategoryId === 'just-for-you' ? (
                     <div className="space-y-8">
                         <section>
@@ -172,7 +172,7 @@ const CategoriesPage = () => {
     <div className="min-h-screen bg-gray-50">
       <Header />
 
-      <main className="container mx-auto px-4 pb-8">
+      <main className={`container mx-auto px-4 ${isMobile ? 'pb-20' : 'pb-8'}`}>
         {/* Breadcrumb */}
         <div className="mb-8">
           <div className="flex items-center gap-2 text-sm text-gray-600">
