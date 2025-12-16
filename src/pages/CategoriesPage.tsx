@@ -48,8 +48,8 @@ const CategoriesPage = () => {
       <div className="flex flex-col min-h-screen bg-white">
         <Header />
         
-        {/* Mobile Layout Container - Adjust pt-32 to account for Header + CategoryBar if present */}
-        <div className="flex flex-1 overflow-hidden pt-[115px] h-[calc(100vh-60px)]">
+        {/* Mobile Layout Container */}
+        <div className="flex flex-1 overflow-hidden pt-16 h-[calc(100vh-60px)]">
             {/* Sidebar */}
             <aside className="w-[100px] flex-shrink-0 bg-gray-50 overflow-y-auto border-r border-gray-100 pb-24 scrollbar-hide">
                 {/* Special Sections */}
