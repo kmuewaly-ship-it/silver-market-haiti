@@ -47,7 +47,7 @@ const CartSidebarB2B = ({
         }`}
       >
         {/* Header */}
-        <div className="sticky top-0 bg-gradient-to-r from-blue-600 to-indigo-600 text-white p-4 flex items-center justify-between shadow-lg">
+        <div className="sticky top-0 text-white p-4 flex items-center justify-between shadow-lg" style={{ backgroundColor: '#071d7f' }}>
           <div className="flex items-center gap-2">
             <ShoppingCart className="w-6 h-6" />
             <h2 className="font-bold text-lg">Carrito B2B</h2>
@@ -150,7 +150,7 @@ const CartSidebarB2B = ({
                       <span className="text-gray-600">
                         ${item.precio_b2b.toFixed(2)} × {item.cantidad}
                       </span>
-                      <span className="font-bold text-blue-600">
+                      <span className="font-bold" style={{ color: '#071d7f' }}>
                         ${item.subtotal.toFixed(2)}
                       </span>
                     </div>
@@ -170,7 +170,7 @@ const CartSidebarB2B = ({
                 </div>
                 <div className="border-t border-gray-300 pt-3 flex justify-between text-lg font-bold">
                   <span className="text-gray-900">Total:</span>
-                  <span className="text-blue-600">
+                  <span className="font-bold" style={{ color: '#071d7f' }}>
                     ${cart.subtotal.toFixed(2)}
                   </span>
                 </div>
