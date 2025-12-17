@@ -34,6 +34,7 @@ import AdminCatalogo from "./pages/admin/AdminCatalogo";
 import AdminCategorias from "./pages/admin/AdminCategorias";
 import AdminVendedores from "./pages/admin/AdminVendedores";
 import AdminBanners from "./pages/admin/AdminBanners";
+import AdminProveedores from "./pages/admin/AdminProveedores";
 
 // Seller Pages
 import SellerAcquisicionLotes from "./pages/seller/SellerAcquisicionLotes";
@@ -133,6 +134,14 @@ const AppContent = () => {
               element={
                 <ProtectedRoute requiredRoles={[UserRole.ADMIN]}>
                   <AdminBanners />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/admin/proveedores" 
+              element={
+                <ProtectedRoute requiredRoles={[UserRole.ADMIN]}>
+                  <AdminProveedores />
                 </ProtectedRoute>
               } 
             />

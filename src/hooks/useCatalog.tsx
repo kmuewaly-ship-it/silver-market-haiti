@@ -340,7 +340,7 @@ export const useCatalog = () => {
 
   // Create supplier
   const createSupplier = useMutation({
-    mutationFn: async (supplier: { name: string; contact_email?: string; contact_phone?: string; country?: string }) => {
+    mutationFn: async (supplier: { name: string; contact_email?: string | null; contact_phone?: string | null; country?: string | null; notes?: string | null }) => {
       const { data, error } = await supabase
         .from('suppliers')
         .insert([supplier])
@@ -352,6 +352,43 @@ export const useCatalog = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['suppliers'] });
       toast({ title: 'Proveedor creado exitosamente' });
+    },
+  });
+
+  // Update supplier
+  const updateSupplier = useMutation({
+    mutationFn: async (supplier: { id: string; name: string; contact_email?: string | null; contact_phone?: string | null; country?: string | null; notes?: string | null }) => {
+      const { id, ...updateData } = supplier;
+      const { data, error } = await supabase
+        .from('suppliers')
+        .update(updateData)
+        .eq('id', id)
+        .select()
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['suppliers'] });
+      toast({ title: 'Proveedor actualizado exitosamente' });
+    },
+    onError: (error: Error) => {
+      toast({ title: 'Error al actualizar proveedor', description: error.message, variant: 'destructive' });
+    },
+  });
+
+  // Delete supplier
+  const deleteSupplier = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from('suppliers').delete().eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['suppliers'] });
+      toast({ title: 'Proveedor eliminado' });
+    },
+    onError: (error: Error) => {
+      toast({ title: 'Error al eliminar proveedor', description: error.message, variant: 'destructive' });
     },
   });
 
@@ -369,5 +406,7 @@ export const useCatalog = () => {
     downloadAndStoreImage,
     createCategory,
     createSupplier,
+    updateSupplier,
+    deleteSupplier,
   };
 };
