@@ -19,21 +19,20 @@ const CartSidebarB2B = ({
 }: CartSidebarB2BProps) => {
   return (
     <>
-      {/* Botón flotante - Mejorado */}
+      {/* Botón flotante */}
       <button
         onClick={onToggle}
-        className={`fixed bottom-6 right-6 z-40 text-white rounded-full p-4 shadow-2xl flex items-center gap-3 transition-all duration-300 ${
-          isOpen ? 'bg-red-600 hover:bg-red-700' : 'bg-blue-600 hover:bg-blue-700'
-        } ${cart.totalItems > 0 ? 'animate-pulse' : ''}`}
+        className="fixed bottom-6 right-6 z-40 text-white rounded-full p-4 shadow-2xl flex items-center justify-center transition-all duration-300 hover:scale-110"
+        style={{ backgroundColor: '#94111f' }}
       >
         <ShoppingCart className="w-6 h-6" />
         {cart.totalItems > 0 && (
-          <>
-            <span className="text-sm font-bold">{cart.totalItems} items</span>
-            <span className="bg-red-500 text-white text-xs font-bold rounded-full w-6 h-6 flex items-center justify-center">
-              {cart.totalItems}
-            </span>
-          </>
+          <span 
+            className="absolute -top-1 -right-1 text-white text-xs font-bold rounded-full w-6 h-6 flex items-center justify-center"
+            style={{ backgroundColor: '#071d7f' }}
+          >
+            {cart.totalItems}
+          </span>
         )}
       </button>
 
