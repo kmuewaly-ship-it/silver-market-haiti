@@ -8,28 +8,20 @@ import SearchFilterB2B from '@/components/b2b/SearchFilterB2B';
 import ProductCardB2B from '@/components/b2b/ProductCardB2B';
 import CartSidebarB2B from '@/components/b2b/CartSidebarB2B';
 import { B2BFilters, ProductB2BCard } from '@/types/b2b';
-import { supabase } from '@/integrations/supabase/client';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
-import { Button } from "@/components/ui/button";
-import { Filter, SlidersHorizontal, ChevronLeft, ChevronRight } from "lucide-react";
-
-interface Category {
-  id: string;
-  nombre: string;
-}
+import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
+import { Button } from '@/components/ui/button';
+import { Filter, ChevronLeft, ChevronRight } from 'lucide-react';
 
 const SellerAcquisicionLotes = () => {
   const { user, isLoading } = useAuth();
   const { cart, addItem, updateQuantity, removeItem } = useCartB2B();
   const isMobile = useIsMobile();
-
+  
   const [products, setProducts] = useState<ProductB2BCard[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
   const [filteredProducts, setFilteredProducts] = useState<ProductB2BCard[]>([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
-  const [isLoadingProducts, setIsLoadingProducts] = useState(true);
   const itemsPerPage = 12;
   const [filters, setFilters] = useState<B2BFilters>({
     searchQuery: '',
@@ -38,54 +30,61 @@ const SellerAcquisicionLotes = () => {
     sortBy: 'newest',
   });
 
-  // Fetch real products from Supabase
+  // Mock products - Estos vendrían del backend
   useEffect(() => {
-    const fetchProducts = async () => {
-      setIsLoadingProducts(true);
-      const { data, error } = await supabase
-        .from('products')
-        .select('id, sku_interno, nombre, precio_mayorista, moq, stock_fisico, imagen_principal, categoria_id')
-        .eq('is_active', true)
-        .order('created_at', { ascending: false });
-
-      if (error) {
-        console.error('Error fetching products:', error);
-      } else if (data) {
-        const mapped: ProductB2BCard[] = data.map((p) => ({
-          id: p.id,
-          sku: p.sku_interno,
-          nombre: p.nombre,
-          precio_b2b: p.precio_mayorista,
-          moq: p.moq,
-          stock_fisico: p.stock_fisico,
-          imagen_principal: p.imagen_principal || '/placeholder.svg',
-          categoria_id: p.categoria_id || '',
-        }));
-        setProducts(mapped);
-      }
-      setIsLoadingProducts(false);
-    };
-
-    fetchProducts();
-  }, []);
-
-  // Fetch real categories from Supabase
-  useEffect(() => {
-    const fetchCategories = async () => {
-      const { data, error } = await supabase
-        .from('categories')
-        .select('id, name')
-        .eq('is_visible_public', true)
-        .order('sort_order', { ascending: true });
-
-      if (error) {
-        console.error('Error fetching categories:', error);
-      } else if (data) {
-        setCategories(data.map((c) => ({ id: c.id, nombre: c.name })));
-      }
-    };
-
-    fetchCategories();
+    const mockProducts: ProductB2BCard[] = [
+      {
+        id: '1',
+        sku: 'TSHIRT-001',
+        nombre: 'Camiseta Básica Blanca - Talla M',
+        precio_b2b: 2.5,
+        moq: 50,
+        stock_fisico: 500,
+        imagen_principal: 'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=300&h=300&fit=crop',
+        categoria_id: 'cat1',
+      },
+      {
+        id: '2',
+        sku: 'JEANS-001',
+        nombre: 'Pantalón Vaquero Azul - Talla 32',
+        precio_b2b: 8.5,
+        moq: 30,
+        stock_fisico: 200,
+        imagen_principal: 'https://images.unsplash.com/photo-1542272604-787c62d465d1?w=300&h=300&fit=crop',
+        categoria_id: 'cat1',
+      },
+      {
+        id: '3',
+        sku: 'SHOES-001',
+        nombre: 'Zapatillas Deportivas Negras',
+        precio_b2b: 12.0,
+        moq: 20,
+        stock_fisico: 150,
+        imagen_principal: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=300&h=300&fit=crop',
+        categoria_id: 'cat2',
+      },
+      {
+        id: '4',
+        sku: 'DRESS-001',
+        nombre: 'Vestido Casual Floral',
+        precio_b2b: 6.0,
+        moq: 25,
+        stock_fisico: 75,
+        imagen_principal: 'https://images.unsplash.com/photo-1595777707802-a89fbc6ce338?w=300&h=300&fit=crop',
+        categoria_id: 'cat1',
+      },
+      {
+        id: '5',
+        sku: 'ACC-001',
+        nombre: 'Correa de Cuero Marrón',
+        precio_b2b: 3.5,
+        moq: 100,
+        stock_fisico: 0,
+        imagen_principal: 'https://images.unsplash.com/photo-1535632066927-ab7c9ab60908?w=300&h=300&fit=crop',
+        categoria_id: 'cat3',
+      },
+    ];
+    setProducts(mockProducts);
   }, []);
 
   // Aplicar filtros
@@ -149,13 +148,18 @@ const SellerAcquisicionLotes = () => {
     setCurrentPage(1);
   }, [filters]);
 
+  const categories = [
+    { id: 'cat1', nombre: 'Ropa' },
+    { id: 'cat2', nombre: 'Zapatos' },
+    { id: 'cat3', nombre: 'Accesorios' },
+  ];
 
-  if (isLoading || isLoadingProducts) {
+  if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Cargando catálogo...</p>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+          <p>Cargando...</p>
         </div>
       </div>
     );
@@ -165,40 +169,37 @@ const SellerAcquisicionLotes = () => {
     <SellerLayout>
       <div className="min-h-screen bg-gray-50">
         <Header />
-
-        <main className="container mx-auto px-4 pb-8 pt-4 md:pt-0">
+        
+        <main className="container mx-auto px-4 pb-8">
           {/* Encabezado */}
-          <div className="mb-6 md:mb-8">
-            <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-2">
+          <div className="mb-8">
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">
               Catálogo de Adquisición B2B
             </h1>
-            <p className="text-sm md:text-base text-gray-600">
+            <p className="text-gray-600">
               Bienvenido, {user?.name}. Busca y selecciona productos al por mayor.
             </p>
           </div>
 
-        {/* Filtros - Mobile vs Desktop */}
+        {/* Filtros */}
         {isMobile ? (
           <div className="mb-6">
             <Sheet>
               <SheetTrigger asChild>
-                <Button variant="outline" className="w-full flex items-center justify-center gap-2 h-12 text-base">
-                  <SlidersHorizontal className="w-5 h-5" />
-                  Filtrar y Ordenar
-                  {(filters.category || filters.searchQuery || filters.stockStatus !== 'all') && (
-                    <span className="ml-1 w-2 h-2 bg-blue-600 rounded-full" />
-                  )}
+                <Button variant="outline" className="w-full flex items-center gap-2">
+                  <Filter className="h-4 w-4" />
+                  Filtros y Búsqueda
                 </Button>
               </SheetTrigger>
-              <SheetContent side="bottom" className="h-[85vh] overflow-y-auto rounded-t-xl">
-                <SheetHeader className="mb-4">
-                  <SheetTitle>Filtros de Búsqueda</SheetTitle>
-                </SheetHeader>
-                <SearchFilterB2B
-                  filters={filters}
-                  onFiltersChange={setFilters}
-                  categories={categories}
-                />
+              <SheetContent side="bottom" className="h-[80vh] overflow-y-auto">
+                <div className="py-4">
+                  <h3 className="font-semibold mb-4">Filtros</h3>
+                  <SearchFilterB2B
+                    filters={filters}
+                    onFiltersChange={setFilters}
+                    categories={categories}
+                  />
+                </div>
               </SheetContent>
             </Sheet>
           </div>
@@ -214,10 +215,10 @@ const SellerAcquisicionLotes = () => {
         <div className="mb-8">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-bold text-gray-900">
-              Productos ({filteredProducts.length})
+              Productos ({filteredProducts.length} encontrados)
             </h2>
             <div className="text-sm text-gray-600">
-              {startIndex + 1}-{Math.min(endIndex, filteredProducts.length)} de {filteredProducts.length}
+              Mostrando {startIndex + 1}-{Math.min(endIndex, filteredProducts.length)} de {filteredProducts.length}
             </div>
           </div>
 
@@ -229,7 +230,7 @@ const SellerAcquisicionLotes = () => {
             </div>
           ) : (
             <>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 {paginatedProducts.map((product) => (
                   <ProductCardB2B
                     key={product.id}
@@ -242,41 +243,37 @@ const SellerAcquisicionLotes = () => {
 
               {/* Paginación */}
               {totalPages > 1 && (
-                <div className="flex items-center justify-center gap-2 mt-8 overflow-x-auto pb-2">
+                <div className="flex items-center justify-center gap-2 mt-8">
                   <button
                     onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
                     disabled={currentPage === 1}
-                    className="px-3 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition text-sm"
+                    className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition"
                   >
-                    <ChevronLeft className="w-4 h-4" />
+                    {isMobile ? <ChevronLeft className="h-5 w-5" /> : "\u2190 Anterior"}
                   </button>
 
                   <div className="flex gap-1">
-                    {isMobile ? (
-                      // Mobile Pagination (Simplified)
-                      <span className="px-3 py-2 text-sm font-medium">
-                        Página {currentPage} de {totalPages}
-                      </span>
-                    ) : (
-                      // Desktop Pagination (Full)
-                      Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-                        <button
-                          key={page}
-                          onClick={() => setCurrentPage(page)}
-                          className={px-3 py-2 rounded-lg transition text-sm }
-                        >
-                          {page}
-                        </button>
-                      ))
-                    )}
+                    {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                      <button
+                        key={page}
+                        onClick={() => setCurrentPage(page)}
+                        className={`px-3 py-2 rounded-lg transition ${
+                          currentPage === page
+                            ? 'bg-blue-600 text-white'
+                            : 'border border-gray-300 hover:bg-gray-50'
+                        }`}
+                      >
+                        {page}
+                      </button>
+                    ))}
                   </div>
 
                   <button
                     onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
                     disabled={currentPage === totalPages}
-                    className="px-3 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition text-sm"
+                    className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition"
                   >
-                    <ChevronRight className="w-4 h-4" />
+                    {isMobile ? <ChevronRight className="h-5 w-5" /> : "Siguiente \u2192"}
                   </button>
                 </div>
               )}
