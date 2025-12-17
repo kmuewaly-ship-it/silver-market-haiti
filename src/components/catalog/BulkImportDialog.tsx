@@ -10,6 +10,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { useCatalog } from '@/hooks/useCatalog';
 import { Download, Upload, FileSpreadsheet, AlertCircle, CheckCircle2, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import HierarchicalCategorySelect from './HierarchicalCategorySelect';
 
 interface BulkImportDialogProps {
   open: boolean;
@@ -24,6 +25,7 @@ interface ParsedRow {
   moq: number;
   stock_fisico: number;
   url_imagen?: string;
+  categoria_id?: string;
   errors: string[];
   isValid: boolean;
 }
@@ -36,6 +38,7 @@ interface ColumnMapping {
   moq: string;
   stock_fisico: string;
   url_imagen: string;
+  categoria: string;
 }
 
 const TEMPLATE_COLUMNS = [
@@ -45,7 +48,8 @@ const TEMPLATE_COLUMNS = [
   'Precio_Mayorista',
   'MOQ_Cantidad_Minima',
   'Stock_Fisico',
-  'URL_Imagen_Principal'
+  'URL_Imagen_Principal',
+  'Categoria'
 ];
 
 const DEFAULT_MAPPING: ColumnMapping = {
@@ -55,11 +59,13 @@ const DEFAULT_MAPPING: ColumnMapping = {
   precio_mayorista: 'Precio_Mayorista',
   moq: 'MOQ_Cantidad_Minima',
   stock_fisico: 'Stock_Fisico',
-  url_imagen: 'URL_Imagen_Principal'
+  url_imagen: 'URL_Imagen_Principal',
+  categoria: 'Categoria'
 };
 
 const BulkImportDialog = ({ open, onOpenChange }: BulkImportDialogProps) => {
-  const { bulkImportProducts } = useCatalog();
+  const { bulkImportProducts, useCategories } = useCatalog();
+  const { data: categories } = useCategories();
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
   
@@ -69,10 +75,11 @@ const BulkImportDialog = ({ open, onOpenChange }: BulkImportDialogProps) => {
   const [mapping, setMapping] = useState<ColumnMapping>(DEFAULT_MAPPING);
   const [parsedRows, setParsedRows] = useState<ParsedRow[]>([]);
   const [isImporting, setIsImporting] = useState(false);
+  const [defaultCategoryId, setDefaultCategoryId] = useState<string>('');
 
   const downloadTemplate = () => {
     const csvContent = TEMPLATE_COLUMNS.join(',') + '\n' +
-      'SKU-001,Producto Ejemplo,Descripción del producto,25.99,10,100,https://ejemplo.com/imagen.jpg';
+      'SKU-001,Producto Ejemplo,Descripción del producto,25.99,10,100,https://ejemplo.com/imagen.jpg,Ropa';
     
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
@@ -132,6 +139,8 @@ const BulkImportDialog = ({ open, onOpenChange }: BulkImportDialogProps) => {
             autoMapping.stock_fisico = header;
           } else if (lowerHeader.includes('imagen') || lowerHeader.includes('image') || lowerHeader.includes('url') || lowerHeader.includes('foto')) {
             autoMapping.url_imagen = header;
+          } else if (lowerHeader.includes('categ') || lowerHeader.includes('category')) {
+            autoMapping.categoria = header;
           }
         });
         setMapping(autoMapping);
@@ -157,6 +166,7 @@ const BulkImportDialog = ({ open, onOpenChange }: BulkImportDialogProps) => {
       const moqIndex = getColumnIndex(mapping.moq);
       const stockIndex = getColumnIndex(mapping.stock_fisico);
       const imagenIndex = getColumnIndex(mapping.url_imagen);
+      const categoriaIndex = getColumnIndex(mapping.categoria);
 
       const sku = skuIndex >= 0 ? row[skuIndex]?.trim() : '';
       const nombre = nombreIndex >= 0 ? row[nombreIndex]?.trim() : '';
@@ -165,6 +175,22 @@ const BulkImportDialog = ({ open, onOpenChange }: BulkImportDialogProps) => {
       const moqStr = moqIndex >= 0 ? row[moqIndex]?.trim() : '1';
       const stockStr = stockIndex >= 0 ? row[stockIndex]?.trim() : '0';
       const imagen = imagenIndex >= 0 ? row[imagenIndex]?.trim() : '';
+      const categoriaName = categoriaIndex >= 0 ? row[categoriaIndex]?.trim() : '';
+
+      // Find category ID by name (case-insensitive)
+      let categoriaId: string | undefined = undefined;
+      if (categoriaName && categories) {
+        const foundCat = categories.find(c => 
+          c.name.toLowerCase() === categoriaName.toLowerCase()
+        );
+        if (foundCat) {
+          categoriaId = foundCat.id;
+        }
+      }
+      // Use default category if no category found and default is set
+      if (!categoriaId && defaultCategoryId) {
+        categoriaId = defaultCategoryId;
+      }
 
       // Validations
       if (!sku) errors.push('SKU requerido');
@@ -187,6 +213,7 @@ const BulkImportDialog = ({ open, onOpenChange }: BulkImportDialogProps) => {
         moq: isNaN(moq) ? 1 : moq,
         stock_fisico: isNaN(stock) ? 0 : stock,
         url_imagen: imagen || undefined,
+        categoria_id: categoriaId,
         errors,
         isValid: errors.length === 0
       };
@@ -216,6 +243,7 @@ const BulkImportDialog = ({ open, onOpenChange }: BulkImportDialogProps) => {
         moq: row.moq,
         stock_fisico: row.stock_fisico,
         imagen_principal: row.url_imagen,
+        categoria_id: row.categoria_id,
       }));
 
       await bulkImportProducts.mutateAsync(products);
@@ -234,6 +262,7 @@ const BulkImportDialog = ({ open, onOpenChange }: BulkImportDialogProps) => {
     setHeaders([]);
     setMapping(DEFAULT_MAPPING);
     setParsedRows([]);
+    setDefaultCategoryId('');
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
@@ -297,6 +326,7 @@ const BulkImportDialog = ({ open, onOpenChange }: BulkImportDialogProps) => {
                 <li><span className="font-mono text-xs bg-background px-1 rounded">MOQ_Cantidad_Minima</span> - Mínimo de pedido</li>
                 <li><span className="font-mono text-xs bg-background px-1 rounded">Stock_Fisico</span> - Unidades disponibles</li>
                 <li><span className="font-mono text-xs bg-background px-1 rounded">URL_Imagen_Principal</span> - URL de la imagen</li>
+                <li><span className="font-mono text-xs bg-background px-1 rounded">Categoria</span> - Nombre de la categoría</li>
               </ul>
             </div>
           </div>
@@ -330,6 +360,20 @@ const BulkImportDialog = ({ open, onOpenChange }: BulkImportDialogProps) => {
               ))}
             </div>
 
+            {/* Default category selector */}
+            <div className="p-4 bg-muted/50 rounded-lg space-y-2">
+              <Label className="text-sm font-medium">Categoría por defecto (opcional)</Label>
+              <p className="text-xs text-muted-foreground mb-2">
+                Se aplicará a productos sin categoría en el archivo
+              </p>
+              <HierarchicalCategorySelect
+                categories={categories}
+                value={defaultCategoryId}
+                onValueChange={setDefaultCategoryId}
+                placeholder="Seleccionar categoría por defecto"
+              />
+            </div>
+
             <div className="flex justify-end gap-2">
               <Button variant="outline" onClick={() => setStep('upload')}>Atrás</Button>
               <Button onClick={validateAndParse}>Validar y Previsualizar</Button>
@@ -359,6 +403,7 @@ const BulkImportDialog = ({ open, onOpenChange }: BulkImportDialogProps) => {
                     <TableHead>Estado</TableHead>
                     <TableHead>SKU</TableHead>
                     <TableHead>Nombre</TableHead>
+                    <TableHead>Categoría</TableHead>
                     <TableHead>Precio</TableHead>
                     <TableHead>MOQ</TableHead>
                     <TableHead>Stock</TableHead>
@@ -366,25 +411,31 @@ const BulkImportDialog = ({ open, onOpenChange }: BulkImportDialogProps) => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {parsedRows.map((row, index) => (
-                    <TableRow key={index} className={!row.isValid ? 'bg-destructive/10' : ''}>
-                      <TableCell>
-                        {row.isValid ? (
-                          <CheckCircle2 className="h-4 w-4 text-green-500" />
-                        ) : (
-                          <AlertCircle className="h-4 w-4 text-destructive" />
-                        )}
-                      </TableCell>
-                      <TableCell className="font-mono text-sm">{row.sku_interno}</TableCell>
-                      <TableCell>{row.nombre}</TableCell>
-                      <TableCell>${row.precio_mayorista.toFixed(2)}</TableCell>
-                      <TableCell>{row.moq}</TableCell>
-                      <TableCell>{row.stock_fisico}</TableCell>
-                      <TableCell className="text-destructive text-xs">
-                        {row.errors.join(', ')}
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                  {parsedRows.map((row, index) => {
+                    const categoryName = row.categoria_id 
+                      ? categories?.find(c => c.id === row.categoria_id)?.name || '-'
+                      : '-';
+                    return (
+                      <TableRow key={index} className={!row.isValid ? 'bg-destructive/10' : ''}>
+                        <TableCell>
+                          {row.isValid ? (
+                            <CheckCircle2 className="h-4 w-4 text-green-500" />
+                          ) : (
+                            <AlertCircle className="h-4 w-4 text-destructive" />
+                          )}
+                        </TableCell>
+                        <TableCell className="font-mono text-sm">{row.sku_interno}</TableCell>
+                        <TableCell>{row.nombre}</TableCell>
+                        <TableCell className="text-xs">{categoryName}</TableCell>
+                        <TableCell>${row.precio_mayorista.toFixed(2)}</TableCell>
+                        <TableCell>{row.moq}</TableCell>
+                        <TableCell>{row.stock_fisico}</TableCell>
+                        <TableCell className="text-destructive text-xs">
+                          {row.errors.join(', ')}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
                 </TableBody>
               </Table>
             </div>
