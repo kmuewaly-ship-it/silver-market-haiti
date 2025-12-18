@@ -431,7 +431,7 @@ const SellerMobileHeader = ({
           {cartCount > 0 && (
             <span className={cn(
               "absolute -top-1 -right-1 min-w-[18px] h-[18px] bg-green-600 text-white text-[10px] font-bold rounded-full flex items-center justify-center px-1",
-              cartBounce && "animate-cart-bounce"
+              cartBounce && "animate-cart-shake"
             )}>
               {cartCount > 99 ? '99+' : cartCount}
             </span>
