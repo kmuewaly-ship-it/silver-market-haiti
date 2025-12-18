@@ -38,6 +38,7 @@ import AdminProveedores from "./pages/admin/AdminProveedores";
 import AdminPedidos from "./pages/admin/AdminPedidos";
 import AdminPreciosConfig from "./pages/admin/AdminPreciosConfig";
 import AdminApprovals from "./pages/admin/AdminApprovals";
+import AdminCotizaciones from "./pages/admin/AdminCotizaciones";
 
 // Seller Pages
 
@@ -177,6 +178,14 @@ const AppContent = () => {
               element={
                 <ProtectedRoute requiredRoles={[UserRole.ADMIN]}>
                   <AdminApprovals />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/admin/cotizaciones" 
+              element={
+                <ProtectedRoute requiredRoles={[UserRole.ADMIN]}>
+                  <AdminCotizaciones />
                 </ProtectedRoute>
               } 
             />

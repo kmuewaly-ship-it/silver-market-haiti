@@ -23,6 +23,7 @@ import { useSellerStatuses } from "@/hooks/useSellerStatuses";
 import { SellerStatusUpload } from "@/components/seller/SellerStatusUpload";
 import { SellerStatusViewer } from "@/components/seller/SellerStatusViewer";
 import { useAdminBanners } from "@/hooks/useAdminBanners";
+import { SellerQuotesHistory } from "@/components/seller/SellerQuotesHistory";
 
 const SellerAccountPage = () => {
   const navigate = useNavigate();
@@ -360,6 +361,8 @@ const SellerAccountPage = () => {
                     </CardContent>
                 </Card>
 
+                {/* Quotes History */}
+                <SellerQuotesHistory />
 
                 {/* Settings & Actions Grid */}
                 <div>

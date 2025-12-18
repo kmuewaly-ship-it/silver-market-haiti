@@ -13,7 +13,8 @@ import {
   Image as ImageIcon,
   Truck,
   ClipboardList,
-  Calculator
+  Calculator,
+  MessageSquare
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { NavLink } from "@/components/NavLink";
@@ -39,6 +40,7 @@ import { CheckSquare } from "lucide-react";
 const mainNavItems = [
   { title: "Dashboard", url: "/admin", icon: LayoutDashboard },
   { title: "Aprobaciones", url: "/admin/aprobaciones", icon: CheckSquare },
+  { title: "Cotizaciones", url: "/admin/cotizaciones", icon: MessageSquare },
   { title: "Pedidos B2B", url: "/admin/pedidos", icon: ClipboardList },
   { title: "Conciliación B2B", url: "/admin/conciliacion", icon: CreditCard },
   { title: "Catálogo", url: "/admin/catalogo", icon: Package },
