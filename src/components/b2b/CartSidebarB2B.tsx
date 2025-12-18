@@ -92,7 +92,7 @@ const CartSidebarB2B = ({
                   >
                     <div className="flex gap-3">
                       {/* Product Image */}
-                      <div className="w-14 h-14 flex-shrink-0 rounded-md bg-muted overflow-hidden">
+                      <div className="w-18 h-18 flex-shrink-0 rounded-md bg-muted overflow-hidden" style={{ width: '72px', height: '72px' }}>
                         {item.imagen_principal ? (
                           <img 
                             src={item.imagen_principal} 
