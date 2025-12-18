@@ -206,7 +206,6 @@ export const useB2BCartSupabase = () => {
       }
 
       await fetchOrCreateCart();
-      toast.success('Producto agregado al carrito');
     } catch (error) {
       console.error('Error adding item:', error);
       toast.error('Error al agregar producto');

@@ -10,7 +10,7 @@ import ProductCardB2B from "@/components/b2b/ProductCardB2B";
 import CartSidebarB2B from "@/components/b2b/CartSidebarB2B";
 import { B2BFilters, ProductB2BCard, CartItemB2B } from "@/types/b2b";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { useToast } from "@/hooks/use-toast";
+
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Filter, ChevronLeft, ChevronRight } from "lucide-react";
@@ -27,15 +27,8 @@ const SellerAcquisicionLotesContent = () => {
     removeItem
   } = useCartB2B();
   const isMobile = useIsMobile();
-  const {
-    toast
-  } = useToast();
   const handleAddToCart = (item: CartItemB2B) => {
     addItem(item);
-    toast({
-      title: "Producto agregado",
-      description: `${item.nombre} (${item.cantidad} unidades) se ha añadido al carrito.`
-    });
   };
   const [products, setProducts] = useState<ProductB2BCard[]>([]);
   const [filteredProducts, setFilteredProducts] = useState<ProductB2BCard[]>([]);
