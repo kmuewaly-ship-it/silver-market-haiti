@@ -20,13 +20,12 @@ const MobileBottomNav = () => {
   const accountLink = role === UserRole.SELLER ? "/seller/cuenta" : "/cuenta";
   const cartLink = role === UserRole.SELLER ? "/seller/carrito" : "/carrito";
   
-  // If seller, "Categorías" should link to B2B catalog or open filter
-  // For now, let's point it to the B2B catalog page if user is seller
-  const categoriesLink = role === UserRole.SELLER ? "/seller/adquisicion-lotes" : "/categorias";
+  // Categories always shows the normal categories page for all users
+  const categoriesLink = "/categorias";
   
   const navItems = [
     { href: "/", icon: Home, label: "Inicio" },
-    { href: categoriesLink, icon: LayoutGrid, label: "Categorías" },
+    { href: categoriesLink, icon: LayoutGrid, label: "CategorÃ­as" },
     { href: "/tendencias", icon: Sparkles, label: "Tendencias", hasDot: true },
     { href: cartLink, icon: ShoppingBag, label: "Carrito", badge: "99+" },
     { href: accountLink, icon: User, label: "Cuenta" },
@@ -37,8 +36,7 @@ const MobileBottomNav = () => {
       <div className="flex items-center justify-around h-14 px-1">
         {navItems.map((item) => {
           const isActive = location.pathname === item.href || 
-            (item.href === "/categorias" && location.pathname.startsWith("/categoria")) ||
-            (item.href === "/seller/adquisicion-lotes" && location.pathname === "/seller/adquisicion-lotes");
+            (item.href === "/categorias" && location.pathname.startsWith("/categoria"));
           
           const IconComponent = item.icon;
           
