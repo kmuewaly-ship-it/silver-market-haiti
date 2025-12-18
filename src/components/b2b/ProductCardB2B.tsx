@@ -114,7 +114,7 @@ const ProductCardB2B = ({ product, onAddToCart, cartItem, whatsappNumber = "5031
       {/* Content Section */}
       <div className="p-3 flex flex-col flex-1">
         {/* Title */}
-        <h3 className="text-sm text-gray-700 line-clamp-2 mb-1 leading-snug min-h-[2.5em]" title={product.nombre}>
+        <h3 className="text-sm text-gray-700 line-clamp-1 mb-1 leading-snug" title={product.nombre}>
           {product.nombre}
         </h3>
 
