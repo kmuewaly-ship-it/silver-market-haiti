@@ -283,7 +283,7 @@ export const useB2BCartSupabase = () => {
   }, [cart.id, fetchOrCreateCart]);
 
   // Create order from cart
-  const createOrder = useCallback(async (paymentMethod: 'stripe' | 'moncash' | 'transfer' | 'siver_credit') => {
+  const createOrder = useCallback(async (paymentMethod: 'stripe' | 'moncash' | 'transfer') => {
     if (!cart.id || !user?.id || cart.items.length === 0) {
       toast.error('Carrito vacío o usuario no autenticado');
       return null;
