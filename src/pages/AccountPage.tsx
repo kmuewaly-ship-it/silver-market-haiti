@@ -1,3 +1,4 @@
+import { useState } from "react";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
 import { useAuth } from "@/hooks/useAuth";
@@ -13,10 +14,14 @@ import { Link } from "react-router-dom";
 import { UserRole } from "@/types/auth";
 import { SellerLayout } from "@/components/seller/SellerLayout";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { AddressesDialog } from "@/components/account/AddressesDialog";
+import { SettingsDialog } from "@/components/account/SettingsDialog";
 
 const AccountPage = () => {
   const { user, signOut, role } = useAuth();
   const isMobile = useIsMobile();
+  const [showAddresses, setShowAddresses] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
 
   if (!user) {
     return (
@@ -152,7 +157,10 @@ const AccountPage = () => {
                         </p>
                     </Link>
 
-                    <button className="flex flex-col items-start p-6 bg-white rounded-xl shadow-md hover:shadow-xl border border-transparent hover:border-blue-100 transition-all duration-300 group text-left">
+                    <button 
+                        onClick={() => setShowAddresses(true)}
+                        className="flex flex-col items-start p-6 bg-white rounded-xl shadow-md hover:shadow-xl border border-transparent hover:border-blue-100 transition-all duration-300 group text-left"
+                    >
                         <div className="p-3 rounded-xl bg-blue-50 text-[#071d7f] group-hover:bg-[#071d7f] group-hover:text-white transition-colors mb-4 shadow-sm">
                             <MapPin className="h-6 w-6" />
                         </div>
@@ -162,7 +170,10 @@ const AccountPage = () => {
                         </p>
                     </button>
 
-                    <button className="flex flex-col items-start p-6 bg-white rounded-xl shadow-md hover:shadow-xl border border-transparent hover:border-blue-100 transition-all duration-300 group text-left">
+                    <button 
+                        onClick={() => setShowSettings(true)}
+                        className="flex flex-col items-start p-6 bg-white rounded-xl shadow-md hover:shadow-xl border border-transparent hover:border-blue-100 transition-all duration-300 group text-left"
+                    >
                         <div className="p-3 rounded-xl bg-blue-50 text-[#071d7f] group-hover:bg-[#071d7f] group-hover:text-white transition-colors mb-4 shadow-sm">
                             <Settings className="h-6 w-6" />
                         </div>
@@ -193,6 +204,9 @@ const AccountPage = () => {
         </div>
       </main>
       {!isMobile && <Footer />}
+      
+      <AddressesDialog open={showAddresses} onOpenChange={setShowAddresses} />
+      <SettingsDialog open={showSettings} onOpenChange={setShowSettings} />
     </div>
   );
 
