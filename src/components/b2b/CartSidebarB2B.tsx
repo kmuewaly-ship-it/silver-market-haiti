@@ -199,7 +199,8 @@ const CartSidebarB2B = ({
               {/* Botón Checkout */}
               <Link
                 to="/seller/checkout"
-                className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white py-3 rounded-lg font-bold text-center transition block mt-4 shadow-lg"
+                className="w-full text-white py-3 rounded-lg font-bold text-center transition block mt-4 shadow-lg hover:opacity-90"
+                style={{ backgroundColor: '#071d7f' }}
               >
                 Proceder al Checkout
               </Link>
