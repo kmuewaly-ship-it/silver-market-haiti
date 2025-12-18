@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useB2BCartSupabase } from '@/hooks/useB2BCartSupabase';
+import { useKYC } from '@/hooks/useKYC';
+import { useSellerCredits } from '@/hooks/useSellerCredits';
 import { SellerLayout } from '@/components/seller/SellerLayout';
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
@@ -11,6 +13,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
+import { Slider } from '@/components/ui/slider';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { supabase } from '@/integrations/supabase/client';
 import {
   ArrowLeft,
   Check,
@@ -21,15 +26,19 @@ import {
   AlertCircle,
   ShoppingBag,
   Copy,
+  Wallet,
+  Info,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
-type PaymentMethod = 'stripe' | 'moncash' | 'transfer';
+type PaymentMethod = 'stripe' | 'moncash' | 'transfer' | 'siver_credit';
 
 const SellerCheckout = () => {
   const navigate = useNavigate();
   const { user, isLoading: authLoading } = useAuth();
   const { cart, isLoading: cartLoading, createOrder, markOrderAsPaid, clearCart } = useB2BCartSupabase();
+  const { isVerified } = useKYC();
+  const { credit, availableCredit, hasActiveCredit, calculateMaxCreditForCart } = useSellerCredits();
 
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('stripe');
   const [isProcessing, setIsProcessing] = useState(false);
@@ -37,9 +46,23 @@ const SellerCheckout = () => {
   const [orderId, setOrderId] = useState<string | null>(null);
   const [paymentReference, setPaymentReference] = useState('');
   const [paymentNotes, setPaymentNotes] = useState('');
+  const [creditAmount, setCreditAmount] = useState(0);
+
+  // Calculate max credit for current cart
+  const maxCreditAmount = calculateMaxCreditForCart(cart.subtotal);
+  const remainingToPay = cart.subtotal - creditAmount;
 
   // Payment method details
   const paymentMethods = [
+    ...(isVerified && hasActiveCredit ? [{
+      id: 'siver_credit' as PaymentMethod,
+      name: 'Crédito Siver',
+      description: `Disponible: $${availableCredit.toFixed(2)} (máx ${credit?.max_cart_percentage}% del carrito)`,
+      icon: Wallet,
+      color: 'text-purple-600',
+      bgColor: 'bg-purple-50',
+      highlight: true,
+    }] : []),
     {
       id: 'stripe' as PaymentMethod,
       name: 'Tarjeta de Crédito (Stripe)',
@@ -183,9 +206,15 @@ const SellerCheckout = () => {
       return;
     }
 
-    // Validate payment reference for non-Stripe methods
-    if (paymentMethod !== 'stripe' && !paymentReference.trim()) {
+    // Validate payment reference for non-Stripe and non-credit methods
+    if (paymentMethod !== 'stripe' && paymentMethod !== 'siver_credit' && !paymentReference.trim()) {
       toast.error('Ingresa la referencia de pago');
+      return;
+    }
+
+    // Validate credit amount
+    if (paymentMethod === 'siver_credit' && creditAmount <= 0) {
+      toast.error('Selecciona un monto de crédito');
       return;
     }
 
@@ -201,10 +230,45 @@ const SellerCheckout = () => {
 
       setOrderId(order.id);
 
-      // For Stripe, simulate payment success (in production, integrate with Stripe)
-      if (paymentMethod === 'stripe') {
-        // In production: redirect to Stripe checkout
-        // For now, simulate successful payment
+      // Handle Siver Credit payment
+      if (paymentMethod === 'siver_credit' && creditAmount > 0) {
+        // Get current credit info
+        const { data: currentCredit } = await supabase
+          .from('seller_credits')
+          .select('balance_debt')
+          .eq('user_id', user.id)
+          .single();
+
+        if (currentCredit) {
+          const newDebt = Number(currentCredit.balance_debt) + creditAmount;
+          
+          // Update debt
+          await supabase
+            .from('seller_credits')
+            .update({ balance_debt: newDebt })
+            .eq('user_id', user.id);
+          
+          // Record movement
+          await supabase
+            .from('credit_movements')
+            .insert({
+              user_id: user.id,
+              movement_type: 'purchase',
+              amount: creditAmount,
+              balance_before: currentCredit.balance_debt,
+              balance_after: newDebt,
+              reference_id: order.id,
+              description: `Compra B2B - Pedido ${order.id.slice(0, 8).toUpperCase()}`,
+            });
+        }
+
+        // Mark as paid (credit is instant)
+        const paid = await markOrderAsPaid(order.id);
+        if (paid) {
+          toast.success('Compra realizada con Crédito Siver');
+        }
+      } else if (paymentMethod === 'stripe') {
+        // For Stripe, simulate payment success (in production, integrate with Stripe)
         const paid = await markOrderAsPaid(order.id);
         if (paid) {
           toast.success('Pago procesado correctamente');
@@ -300,18 +364,37 @@ const SellerCheckout = () => {
               {/* Payment Method */}
               <Card className="p-6">
                 <h2 className="text-xl font-bold mb-4">Método de Pago</h2>
+                
+                {/* Show KYC prompt if not verified */}
+                {!isVerified && (
+                  <Alert className="mb-4 border-purple-300 bg-purple-50 dark:bg-purple-950/30">
+                    <Info className="h-4 w-4 text-purple-600" />
+                    <AlertDescription className="text-purple-700 dark:text-purple-300">
+                      <span className="font-semibold">¿Quieres pagar con crédito?</span>{' '}
+                      <Link to="/seller/kyc" className="underline">Verifica tu identidad</Link> para acceder al Crédito Siver.
+                    </AlertDescription>
+                  </Alert>
+                )}
+
                 <div className="space-y-3">
-                  {paymentMethods.map((method) => {
+                  {paymentMethods.map((method: any) => {
                     const Icon = method.icon;
                     const isSelected = paymentMethod === method.id;
 
                     return (
                       <div
                         key={method.id}
-                        onClick={() => setPaymentMethod(method.id)}
+                        onClick={() => {
+                          setPaymentMethod(method.id);
+                          if (method.id !== 'siver_credit') {
+                            setCreditAmount(0);
+                          }
+                        }}
                         className={`flex items-center gap-4 p-4 rounded-lg border-2 cursor-pointer transition-all ${
                           isSelected
                             ? 'border-primary bg-primary/5'
+                            : method.highlight
+                            ? 'border-purple-300 bg-purple-50/50 hover:border-purple-400'
                             : 'border-border hover:border-muted-foreground'
                         }`}
                       >
@@ -319,7 +402,14 @@ const SellerCheckout = () => {
                           <Icon className={`h-5 w-5 ${method.color}`} />
                         </div>
                         <div className="flex-1">
-                          <p className="font-semibold">{method.name}</p>
+                          <div className="flex items-center gap-2">
+                            <p className="font-semibold">{method.name}</p>
+                            {method.highlight && (
+                              <Badge variant="secondary" className="text-xs bg-purple-100 text-purple-700">
+                                Recomendado
+                              </Badge>
+                            )}
+                          </div>
                           <p className="text-sm text-muted-foreground">
                             {method.description}
                           </p>
@@ -339,6 +429,62 @@ const SellerCheckout = () => {
                     );
                   })}
                 </div>
+
+                {/* Credit Amount Selector */}
+                {paymentMethod === 'siver_credit' && (
+                  <div className="mt-6 p-4 bg-purple-50 dark:bg-purple-950/30 rounded-lg border border-purple-200">
+                    <h3 className="font-semibold mb-3 flex items-center gap-2">
+                      <Wallet className="h-4 w-4 text-purple-600" />
+                      Monto a Pagar con Crédito
+                    </h3>
+                    
+                    <div className="space-y-4">
+                      <div>
+                        <div className="flex justify-between text-sm mb-2">
+                          <span className="text-muted-foreground">Crédito disponible:</span>
+                          <span className="font-medium">${availableCredit.toFixed(2)}</span>
+                        </div>
+                        <div className="flex justify-between text-sm mb-4">
+                          <span className="text-muted-foreground">Máximo para este pedido ({credit?.max_cart_percentage}%):</span>
+                          <span className="font-medium">${maxCreditAmount.toFixed(2)}</span>
+                        </div>
+                      </div>
+
+                      <div>
+                        <Label className="text-sm">Usar crédito: ${creditAmount.toFixed(2)}</Label>
+                        <Slider
+                          value={[creditAmount]}
+                          onValueChange={(value) => setCreditAmount(value[0])}
+                          max={maxCreditAmount}
+                          step={1}
+                          className="mt-2"
+                        />
+                      </div>
+
+                      <div className="pt-3 border-t border-purple-200">
+                        <div className="flex justify-between text-sm">
+                          <span>Pago con crédito:</span>
+                          <span className="font-semibold text-purple-600">-${creditAmount.toFixed(2)}</span>
+                        </div>
+                        {remainingToPay > 0 && (
+                          <div className="flex justify-between text-sm mt-1">
+                            <span>Restante a pagar:</span>
+                            <span className="font-semibold text-orange-600">${remainingToPay.toFixed(2)}</span>
+                          </div>
+                        )}
+                      </div>
+
+                      {remainingToPay > 0 && (
+                        <Alert className="bg-orange-50 border-orange-200">
+                          <AlertCircle className="h-4 w-4 text-orange-600" />
+                          <AlertDescription className="text-orange-700 text-sm">
+                            El monto restante (${remainingToPay.toFixed(2)}) se agregará a tu deuda de crédito.
+                          </AlertDescription>
+                        </Alert>
+                      )}
+                    </div>
+                  </div>
+                )}
 
                 {/* Payment Instructions */}
                 {paymentMethod === 'transfer' && (
@@ -401,8 +547,8 @@ const SellerCheckout = () => {
                   </div>
                 )}
 
-                {/* Payment Reference (for non-Stripe) */}
-                {paymentMethod !== 'stripe' && (
+                {/* Payment Reference (for non-Stripe and non-credit) */}
+                {paymentMethod !== 'stripe' && paymentMethod !== 'siver_credit' && (
                   <div className="mt-6 space-y-4">
                     <div>
                       <Label htmlFor="payment-reference">
@@ -452,21 +598,38 @@ const SellerCheckout = () => {
                   </div>
                 </div>
 
+                {paymentMethod === 'siver_credit' && creditAmount > 0 && (
+                  <div className="space-y-2 mb-4 pb-4 border-b">
+                    <div className="flex justify-between text-sm text-purple-600">
+                      <span>Crédito Siver:</span>
+                      <span className="font-medium">-${creditAmount.toFixed(2)}</span>
+                    </div>
+                  </div>
+                )}
+
                 <div className="flex justify-between text-xl font-bold mb-6">
-                  <span>Total:</span>
-                  <span className="text-primary">${cart.subtotal.toFixed(2)}</span>
+                  <span>Total a Pagar:</span>
+                  <span className="text-primary">
+                    ${paymentMethod === 'siver_credit' ? cart.subtotal.toFixed(2) : cart.subtotal.toFixed(2)}
+                  </span>
                 </div>
 
                 <Button
                   onClick={handlePlaceOrder}
-                  disabled={isProcessing || cart.totalItems === 0}
+                  disabled={isProcessing || cart.totalItems === 0 || (paymentMethod === 'siver_credit' && creditAmount <= 0)}
                   className="w-full"
                   size="lg"
+                  style={{ backgroundColor: paymentMethod === 'siver_credit' ? '#7c3aed' : '#071d7f' }}
                 >
                   {isProcessing ? (
                     <>
                       <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                       Procesando...
+                    </>
+                  ) : paymentMethod === 'siver_credit' ? (
+                    <>
+                      <Wallet className="h-4 w-4 mr-2" />
+                      Pagar con Crédito Siver
                     </>
                   ) : (
                     'Confirmar Pedido'
@@ -477,7 +640,13 @@ const SellerCheckout = () => {
                   Al confirmar, aceptas los términos de servicio
                 </p>
 
-                {paymentMethod !== 'stripe' && (
+                {paymentMethod === 'siver_credit' && (
+                  <Badge variant="outline" className="w-full justify-center mt-4 border-purple-300 text-purple-600">
+                    Pago instantáneo con crédito
+                  </Badge>
+                )}
+
+                {paymentMethod !== 'stripe' && paymentMethod !== 'siver_credit' && (
                   <Badge variant="outline" className="w-full justify-center mt-4">
                     Verificación manual requerida
                   </Badge>
