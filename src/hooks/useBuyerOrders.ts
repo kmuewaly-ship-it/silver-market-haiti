@@ -1,8 +1,10 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { useToast } from '@/hooks/use-toast';
 
 export type BuyerOrderStatus = 'draft' | 'placed' | 'paid' | 'shipped' | 'delivered' | 'cancelled';
+export type RefundStatus = 'none' | 'requested' | 'processing' | 'completed' | 'rejected';
 
 export interface BuyerOrderItem {
   id: string;
@@ -31,6 +33,13 @@ export interface BuyerOrder {
     carrier?: string;
     carrier_url?: string;
     estimated_delivery?: string;
+    cancellation_reason?: string;
+    cancelled_at?: string;
+    cancelled_by?: 'buyer' | 'seller' | 'admin';
+    refund_status?: RefundStatus;
+    refund_amount?: number;
+    refund_requested_at?: string;
+    refund_completed_at?: string;
     [key: string]: any;
   } | null;
   created_at: string;
@@ -92,5 +101,84 @@ export const useBuyerOrder = (orderId: string) => {
       return data as BuyerOrder;
     },
     enabled: !!user?.id && !!orderId,
+  });
+};
+
+export const useCancelBuyerOrder = () => {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+
+  return useMutation({
+    mutationFn: async ({ 
+      orderId, 
+      reason,
+      requestRefund = false
+    }: { 
+      orderId: string; 
+      reason: string;
+      requestRefund?: boolean;
+    }) => {
+      // First get the current order to check status and get metadata
+      const { data: currentOrder, error: fetchError } = await supabase
+        .from('orders_b2b')
+        .select('status, metadata, total_amount')
+        .eq('id', orderId)
+        .eq('buyer_id', user?.id)
+        .single();
+
+      if (fetchError) throw fetchError;
+
+      // Only allow cancellation for certain statuses
+      if (!['placed', 'paid'].includes(currentOrder.status)) {
+        throw new Error('Este pedido no puede ser cancelado en su estado actual');
+      }
+
+      const existingMetadata = (currentOrder.metadata && typeof currentOrder.metadata === 'object') 
+        ? currentOrder.metadata as Record<string, any>
+        : {};
+
+      const newMetadata = {
+        ...existingMetadata,
+        cancellation_reason: reason,
+        cancelled_at: new Date().toISOString(),
+        cancelled_by: 'buyer' as const,
+        refund_status: requestRefund && currentOrder.status === 'paid' ? 'requested' as RefundStatus : 'none' as RefundStatus,
+        refund_amount: requestRefund ? currentOrder.total_amount : undefined,
+        refund_requested_at: requestRefund ? new Date().toISOString() : undefined,
+      };
+
+      const { data, error } = await supabase
+        .from('orders_b2b')
+        .update({ 
+          status: 'cancelled',
+          metadata: newMetadata,
+          updated_at: new Date().toISOString() 
+        })
+        .eq('id', orderId)
+        .eq('buyer_id', user?.id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['buyer-orders'] });
+      queryClient.invalidateQueries({ queryKey: ['buyer-order'] });
+      toast({ 
+        title: 'Pedido cancelado',
+        description: variables.requestRefund 
+          ? 'Tu solicitud de reembolso ha sido enviada' 
+          : 'El pedido ha sido cancelado exitosamente'
+      });
+    },
+    onError: (error: Error) => {
+      toast({ 
+        title: 'Error al cancelar',
+        description: error.message,
+        variant: 'destructive'
+      });
+    },
   });
 };
