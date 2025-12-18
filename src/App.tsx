@@ -27,6 +27,7 @@ import TrendsPage from "./pages/TrendsPage";
 import LoginPage from "./pages/LoginPage";
 import MarketplacePage from "./pages/MarketplacePage";
 import MyPurchasesPage from "./pages/MyPurchasesPage";
+import CheckoutPage from "./pages/CheckoutPage";
 
 // Admin Pages
 import AdminLogin from "./pages/admin/AdminLogin";
@@ -86,6 +87,7 @@ const AppContent = () => {
             <Route path="/cuenta" element={<AccountPage />} />
             <Route path="/mis-compras" element={<MyPurchasesPage />} />
             <Route path="/carrito" element={<CartPage />} />
+            <Route path="/checkout" element={<CheckoutPage />} />
             <Route path="/favoritos" element={<FavoritesPage />} />
             <Route path="/tendencias" element={<TrendsPage />} />
             <Route path="/busqueda" element={<SearchResultsPage />} />
