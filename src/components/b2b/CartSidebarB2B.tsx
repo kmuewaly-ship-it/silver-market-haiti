@@ -1,4 +1,4 @@
-import { ShoppingCart, X, Trash2, AlertCircle } from 'lucide-react';
+import { ShoppingCart, X, Trash2, AlertCircle, Package } from 'lucide-react';
 import { CartB2B, CartItemB2B } from '@/types/b2b';
 import { Link } from 'react-router-dom';
 
@@ -90,69 +90,89 @@ const CartSidebarB2B = ({
                     key={item.productId}
                     className="border border-gray-200 rounded-lg p-3 hover:shadow-md transition bg-white"
                   >
-                    <div className="flex justify-between items-start mb-2">
-                      <div className="flex-1">
-                        <p className="font-medium text-sm text-gray-900">
-                          {item.nombre}
-                        </p>
-                        <p className="text-xs text-gray-500">SKU: {item.sku}</p>
+                    <div className="flex gap-3">
+                      {/* Product Image */}
+                      <div className="w-14 h-14 flex-shrink-0 rounded-md bg-muted overflow-hidden">
+                        {item.imagen_principal ? (
+                          <img 
+                            src={item.imagen_principal} 
+                            alt={item.nombre}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center">
+                            <Package className="h-5 w-5 text-muted-foreground/50" />
+                          </div>
+                        )}
                       </div>
-                      <button
-                        onClick={() => onRemoveItem(item.productId)}
-                        className="text-red-500 hover:text-red-700 hover:bg-red-50 p-1 rounded transition"
-                        title="Eliminar del carrito"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-
-                    {/* Cantidad */}
-                    <div className="flex items-center gap-2 mb-3">
-                      <button
-                        onClick={() =>
-                          onUpdateQuantity(
-                            item.productId,
-                            Math.max(item.moq, item.cantidad - 1)
-                          )
-                        }
-                        className="px-2 py-1 border border-gray-300 rounded hover:bg-gray-100 text-sm font-medium transition"
-                      >
-                        −
-                      </button>
-                      <input
-                        type="number"
-                        min={item.moq}
-                        max={item.stock_fisico}
-                        value={item.cantidad}
-                        onChange={(e) =>
-                          onUpdateQuantity(
-                            item.productId,
-                            parseInt(e.target.value) || item.moq
-                          )
-                        }
-                        className="flex-1 px-2 py-1 border border-gray-300 rounded text-center text-sm font-medium"
-                      />
-                      <button
-                        onClick={() =>
-                          onUpdateQuantity(
-                            item.productId,
-                            Math.min(item.stock_fisico, item.cantidad + 1)
-                          )
-                        }
-                        className="px-2 py-1 border border-gray-300 rounded hover:bg-gray-100 text-sm font-medium transition"
-                      >
-                        +
-                      </button>
-                    </div>
-
-                    {/* Precio y Subtotal */}
-                    <div className="flex justify-between items-center text-sm bg-gray-50 p-2 rounded">
-                      <span className="text-gray-600">
-                        ${item.precio_b2b.toFixed(2)} × {item.cantidad}
-                      </span>
-                      <span className="font-bold" style={{ color: '#071d7f' }}>
-                        ${item.subtotal.toFixed(2)}
-                      </span>
+                      
+                      {/* Product Details */}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex justify-between items-start">
+                          <div className="flex-1 min-w-0">
+                            <p className="font-medium text-sm text-gray-900 line-clamp-1">
+                              {item.nombre}
+                            </p>
+                            <p className="text-xs text-gray-500">SKU: {item.sku}</p>
+                          </div>
+                          <button
+                            onClick={() => onRemoveItem(item.productId)}
+                            className="text-red-500 hover:text-red-700 hover:bg-red-50 p-1 rounded transition ml-2"
+                            title="Eliminar del carrito"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                        
+                        {/* Price */}
+                        <div className="flex items-center justify-between mt-1">
+                          <span className="text-xs text-gray-600">
+                            ${item.precio_b2b.toFixed(2)} × {item.cantidad}
+                          </span>
+                          <span className="text-sm font-bold" style={{ color: '#071d7f' }}>
+                            ${item.subtotal.toFixed(2)}
+                          </span>
+                        </div>
+                        
+                        {/* Quantity Controls */}
+                        <div className="flex items-center gap-1 mt-2">
+                          <button
+                            onClick={() =>
+                              onUpdateQuantity(
+                                item.productId,
+                                Math.max(item.moq, item.cantidad - 1)
+                              )
+                            }
+                            className="px-2 py-0.5 border border-gray-300 rounded hover:bg-gray-100 text-xs font-medium transition"
+                          >
+                            −
+                          </button>
+                          <input
+                            type="number"
+                            min={item.moq}
+                            max={item.stock_fisico}
+                            value={item.cantidad}
+                            onChange={(e) =>
+                              onUpdateQuantity(
+                                item.productId,
+                                parseInt(e.target.value) || item.moq
+                              )
+                            }
+                            className="w-12 px-1 py-0.5 border border-gray-300 rounded text-center text-xs font-medium"
+                          />
+                          <button
+                            onClick={() =>
+                              onUpdateQuantity(
+                                item.productId,
+                                Math.min(item.stock_fisico, item.cantidad + 1)
+                              )
+                            }
+                            className="px-2 py-0.5 border border-gray-300 rounded hover:bg-gray-100 text-xs font-medium transition"
+                          >
+                            +
+                          </button>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 ))}
