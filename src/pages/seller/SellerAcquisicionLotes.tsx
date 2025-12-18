@@ -4,7 +4,7 @@ import { useCartB2B } from "@/hooks/useCartB2B";
 import { SellerLayout } from "@/components/seller/SellerLayout";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
-import GlobalMobileHeader from "@/components/layout/GlobalMobileHeader";
+import SellerMobileHeader from "@/components/seller/SellerMobileHeader";
 import SearchFilterB2B from "@/components/b2b/SearchFilterB2B";
 import ProductCardB2B from "@/components/b2b/ProductCardB2B";
 import CartSidebarB2B from "@/components/b2b/CartSidebarB2B";
@@ -185,9 +185,25 @@ const SellerAcquisicionLotesContent = () => {
     );
   }
 
+  const handleCategorySelect = (categoryId: string | null) => {
+    setFilters({ ...filters, category: categoryId });
+  };
+
+  const handleHeaderSearch = (query: string) => {
+    setFilters({ ...filters, searchQuery: query });
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
-      {isMobile ? <GlobalMobileHeader forceShow /> : <Header />}
+      {isMobile ? (
+        <SellerMobileHeader 
+          selectedCategoryId={filters.category} 
+          onCategorySelect={handleCategorySelect}
+          onSearch={handleHeaderSearch}
+        />
+      ) : (
+        <Header />
+      )}
       
       <main className="container mx-auto px-4 pb-24 pt-4">
 
