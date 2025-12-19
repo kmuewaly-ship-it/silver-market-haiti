@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
-import Header from "@/components/layout/Header";
+import GlobalHeader from "@/components/layout/GlobalHeader";
 import Footer from "@/components/layout/Footer";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -126,7 +126,7 @@ const ProductPage = () => {
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gray-50">
-        {!isMobile && <Header />}
+        {!isMobile && <GlobalHeader />}
         <main className={`container mx-auto px-4 py-8 ${isMobile ? 'pb-20' : 'pb-8'}`}>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             <Skeleton className="aspect-square rounded-lg" />
@@ -146,7 +146,7 @@ const ProductPage = () => {
   if (!product) {
     return (
       <div className="min-h-screen bg-gray-50">
-        {!isMobile && <Header />}
+        {!isMobile && <GlobalHeader />}
         <main className={`container mx-auto px-4 py-12 text-center ${isMobile ? 'pb-20' : ''}`}>
           <Package className="h-16 w-16 mx-auto text-gray-300 mb-4" />
           <h2 className="text-2xl font-bold text-gray-900">Producto no encontrado</h2>
@@ -160,7 +160,7 @@ const ProductPage = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {!isMobile && <Header />}
+      {!isMobile && <GlobalHeader />}
 
       <main className={`container mx-auto px-4 py-4 ${isMobile ? 'pb-20' : 'pb-8'}`}>
         {/* Breadcrumb */}

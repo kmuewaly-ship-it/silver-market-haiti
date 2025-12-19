@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, Link, Navigate } from 'react-router-dom';
-import Header from '@/components/layout/Header';
+import GlobalHeader from '@/components/layout/GlobalHeader';
 import Footer from '@/components/layout/Footer';
 import { useAuth } from '@/hooks/useAuth';
 import { useCart } from '@/hooks/useCart';
@@ -124,7 +124,7 @@ const CheckoutPage = () => {
   if (!user) {
     return (
       <div className="min-h-screen bg-background flex flex-col">
-        {!isMobile && <Header />}
+        {!isMobile && <GlobalHeader />}
         <main className="flex-1 container mx-auto px-4 flex items-center justify-center">
           <Card className="p-8 text-center max-w-md">
             <ShoppingBag className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
@@ -145,7 +145,7 @@ const CheckoutPage = () => {
   if (items.length === 0 && !orderPlaced) {
     return (
       <div className="min-h-screen bg-background flex flex-col">
-        {!isMobile && <Header />}
+        {!isMobile && <GlobalHeader />}
         <main className="flex-1 container mx-auto px-4 flex items-center justify-center">
           <Card className="p-8 text-center max-w-md">
             <ShoppingBag className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
@@ -169,7 +169,7 @@ const CheckoutPage = () => {
   if (orderPlaced) {
     return (
       <div className="min-h-screen bg-background flex flex-col">
-        {!isMobile && <Header />}
+        {!isMobile && <GlobalHeader />}
         <main className="flex-1 container mx-auto px-4 py-8">
           <div className="max-w-2xl mx-auto">
             <Card className="p-8 text-center">
@@ -305,7 +305,7 @@ const CheckoutPage = () => {
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      {!isMobile && <Header />}
+      {!isMobile && <GlobalHeader />}
       
       <main className={`flex-1 container mx-auto px-4 py-6 ${isMobile ? 'pb-24' : 'pb-8'}`}>
         <div className="mb-6">

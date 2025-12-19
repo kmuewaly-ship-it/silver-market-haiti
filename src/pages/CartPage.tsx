@@ -1,4 +1,4 @@
-import Header from "@/components/layout/Header";
+import GlobalHeader from "@/components/layout/GlobalHeader";
 import Footer from "@/components/layout/Footer";
 import { Button } from "@/components/ui/button";
 import { ShoppingCart, Trash2, Package, AlertCircle, MessageCircle, Store, ChevronDown, ChevronUp, Loader2 } from "lucide-react";
@@ -72,7 +72,7 @@ const CartPage = () => {
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      {!isMobile && <Header />}
+      {!isMobile && <GlobalHeader />}
       <main className={`flex-1 container mx-auto px-4 ${isMobile ? 'pb-20' : 'pb-8'}`}>
         {/* Header */}
         <div 

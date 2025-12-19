@@ -1,4 +1,4 @@
-import Header from "@/components/layout/Header";
+import GlobalHeader from "@/components/layout/GlobalHeader";
 import Footer from "@/components/layout/Footer";
 import HeroSection from "@/components/landing/HeroSection";
 import ProductCarousel from "@/components/landing/ProductCarousel";
@@ -76,7 +76,7 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      {!isMobile && <Header />}
+      {!isMobile && <GlobalHeader />}
       
       <main className={isMobile ? "pb-14" : ""}>
         <HeroSection />

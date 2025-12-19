@@ -1,4 +1,4 @@
-import Header from "@/components/layout/Header";
+import GlobalHeader from "@/components/layout/GlobalHeader";
 import Footer from "@/components/layout/Footer";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -15,7 +15,7 @@ const FavoritesPage = () => {
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      {!isMobile && <Header />}
+      {!isMobile && <GlobalHeader />}
       <main className={`flex-1 container mx-auto px-4 ${isMobile ? 'pb-20' : 'pb-8'}`}>
         <h1 className="text-3xl font-bold mb-8 flex items-center gap-2">
           <Heart className="h-8 w-8 text-red-500 fill-current" />

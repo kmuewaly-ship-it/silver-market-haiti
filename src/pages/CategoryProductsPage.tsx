@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import Header from "@/components/layout/Header";
+import GlobalHeader from "@/components/layout/GlobalHeader";
 import Footer from "@/components/layout/Footer";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ChevronRight, Star, ShoppingBag } from "lucide-react";
@@ -91,7 +91,7 @@ const CategoryProductsPage = () => {
   if (isLoading) {
     return (
       <div className="min-h-screen bg-white">
-        {!isMobile && <Header />}
+        {!isMobile && <GlobalHeader />}
         <main className={`container mx-auto px-4 ${isMobile ? 'pb-20' : 'pb-8'}`}>
           <h1 className="text-3xl font-bold mb-8">Cargando...</h1>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -107,7 +107,7 @@ const CategoryProductsPage = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {!isMobile && <Header />}
+      {!isMobile && <GlobalHeader />}
 
       <main className={`container mx-auto px-4 ${isMobile ? 'pb-20' : 'pb-8'}`}>
         {/* Breadcrumb */}
