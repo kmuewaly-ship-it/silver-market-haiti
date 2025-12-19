@@ -314,7 +314,7 @@ const HeaderB2B = ({
               <form onSubmit={handleSearch} className="flex items-center bg-gray-100 rounded-full border border-gray-200 overflow-hidden">
                 <input
                   type="text"
-                  placeholder="Buscar productos..."
+                  placeholder=""
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   onFocus={() => setShowHistory(true)}
@@ -481,7 +481,7 @@ const HeaderB2B = ({
             </Link>
 
             {/* Search Bar with History */}
-            <div ref={searchContainerRef} className="flex-1 mx-8 max-w-md relative">
+            <div ref={searchContainerRef} className="flex-1 mx-8 max-w-xs relative">
               <form onSubmit={handleSearch}>
                 <div className="relative w-full flex items-center">
                   <Input
