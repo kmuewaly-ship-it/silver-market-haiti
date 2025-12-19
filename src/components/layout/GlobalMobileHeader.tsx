@@ -95,10 +95,11 @@ const GlobalMobileHeader = ({ forceShow = false }: GlobalMobileHeaderProps) => {
     prevCartCountRef.current = cartCount;
   }, [cartCount]);
 
-  // Hide on admin, seller, and login routes (unless forceShow)
+  // Hide on admin, seller, login, and trends routes (unless forceShow)
   const isAdminRoute = location.pathname.startsWith('/admin');
   const isSellerRoute = location.pathname.startsWith('/seller');
   const isLoginRoute = location.pathname === '/login';
+  const isTrendsRoute = location.pathname === '/tendencias';
 
   // Check for Web Speech API support
   useEffect(() => {
@@ -159,7 +160,7 @@ const GlobalMobileHeader = ({ forceShow = false }: GlobalMobileHeaderProps) => {
     return () => clearTimeout(debounce);
   }, [searchQuery]);
 
-  if (!isMobile || isAdminRoute || isLoginRoute || (isSellerRoute && !forceShow)) {
+  if (!isMobile || isAdminRoute || isLoginRoute || isTrendsRoute || (isSellerRoute && !forceShow)) {
     return null;
   }
 
