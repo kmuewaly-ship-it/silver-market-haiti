@@ -24,7 +24,7 @@ const FeaturedProductsCarousel = ({ products }: FeaturedProductsCarouselProps) =
         <div className="overflow-hidden" ref={emblaRef}>
           <div className="flex gap-4">
             {products.map((product) => (
-              <div className="flex-[0_0_40%] min-w-[140px] max-w-[160px]" key={product.id}>
+              <div className="flex-[0_0_28%] min-w-[100px] max-w-[120px]" key={product.id}>
                 <Card className="h-full border-none shadow-sm hover:shadow-md transition-shadow bg-white">
                   <CardContent className="p-2">
                     <div className="relative aspect-square mb-2 rounded-md overflow-hidden bg-gray-100">
