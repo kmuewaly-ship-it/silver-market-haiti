@@ -13,7 +13,46 @@ import { Loader2 } from "lucide-react";
 import FeaturedProductsCarousel from "@/components/b2b/FeaturedProductsCarousel";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
-const SellerAcquisicionLotesContent = () => {
+// Content component removed - logic moved to SellerAcquisicionLotesContentWithFilters
+const SellerAcquisicionLotes = () => {
+  const [filters, setFiltersState] = useState<B2BFilters>({
+    searchQuery: "",
+    category: null,
+    stockStatus: "all",
+    sortBy: "newest"
+  });
+
+  const handleCategorySelect = (categoryId: string | null) => {
+    setFiltersState(prev => ({
+      ...prev,
+      category: categoryId
+    }));
+  };
+
+  const handleSearch = (query: string) => {
+    setFiltersState(prev => ({
+      ...prev,
+      searchQuery: query
+    }));
+  };
+
+  return (
+    <SellerLayout
+      selectedCategoryId={filters.category}
+      onCategorySelect={handleCategorySelect}
+      onSearch={handleSearch}
+    >
+      <SellerAcquisicionLotesContentWithFilters filters={filters} setFilters={setFiltersState} />
+    </SellerLayout>
+  );
+};
+
+interface ContentWithFiltersProps {
+  filters: B2BFilters;
+  setFilters: React.Dispatch<React.SetStateAction<B2BFilters>>;
+}
+
+const SellerAcquisicionLotesContentWithFilters = ({ filters, setFilters }: ContentWithFiltersProps) => {
   const { user, isLoading: authLoading } = useAuth();
   const { cart, addItem, updateQuantity, removeItem } = useCartB2B();
   const isMobile = useIsMobile();
@@ -23,13 +62,6 @@ const SellerAcquisicionLotesContent = () => {
   const [hasMore, setHasMore] = useState(true);
   const itemsPerPage = 12;
   const loadMoreRef = useRef<HTMLDivElement>(null);
-  
-  const [filters, setFilters] = useState<B2BFilters>({
-    searchQuery: "",
-    category: null,
-    stockStatus: "all",
-    sortBy: "newest"
-  });
   const [whatsappNumber, setWhatsappNumber] = useState("50369596772");
 
   // Fetch products from database
@@ -72,65 +104,60 @@ const SellerAcquisicionLotesContent = () => {
     if (loadMoreRef.current) observer.observe(loadMoreRef.current);
     return () => observer.disconnect();
   }, [handleObserver]);
+
   useEffect(() => {
     const saved = localStorage.getItem("admin_whatsapp_b2b");
     if (saved) setWhatsappNumber(saved);
   }, []);
-  useEffect(() => {
-    setCurrentPage(0);
-  }, [filters]);
+
   const handleAddToCart = (item: CartItemB2B) => {
     addItem(item);
   };
-  const handleCategorySelect = (categoryId: string | null) => {
-    setFilters({
-      ...filters,
-      category: categoryId
-    });
-  };
-  const handleHeaderSearch = (query: string) => {
-    setFilters({
-      ...filters,
-      searchQuery: query
-    });
-  };
+
   const handleSortChange = (value: string) => {
-    setFilters({
-      ...filters,
+    setFilters(prev => ({
+      ...prev,
       sortBy: value as B2BFilters["sortBy"]
-    });
+    }));
   };
+
   const handleStockFilterChange = (value: string) => {
-    setFilters({
-      ...filters,
+    setFilters(prev => ({
+      ...prev,
       stockStatus: value as B2BFilters["stockStatus"]
-    });
+    }));
   };
-  const isLoading = authLoading || productsLoading;
+
   if (authLoading) {
-    return <div className="flex items-center justify-center min-h-screen">
+    return (
+      <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
           <Loader2 className="h-12 w-12 animate-spin text-blue-500 mx-auto mb-4" />
           <p>Cargando...</p>
         </div>
-      </div>;
+      </div>
+    );
   }
-  return <div className="min-h-screen bg-gray-50">
-      
-      
+
+  return (
+    <div className="min-h-screen bg-gray-50">
       <main className="container mx-auto px-4 pb-24 pt-4">
         {/* Hero Carousel (Mobile Only) */}
-        {isMobile && featuredProducts.length > 0 && <div className="mb-6 -mx-4">
+        {isMobile && featuredProducts.length > 0 && (
+          <div className="mb-6 -mx-4">
             <FeaturedProductsCarousel products={featuredProducts} />
-          </div>}
+          </div>
+        )}
 
         {/* Encabezado Desktop */}
-        {!isMobile && <div className="mb-6">
+        {!isMobile && (
+          <div className="mb-6">
             <h1 className="text-2xl font-bold text-gray-900 mb-2">Catálogo Mayorista</h1>
             <p className="text-gray-600">
               Bienvenido, {user?.name || "Vendedor"}. Explora nuestro catálogo de productos al por mayor.
             </p>
-          </div>}
+          </div>
+        )}
 
         {/* Filtros inline */}
         <div className="flex items-center gap-2 mb-6 bg-white px-3 py-2 rounded-lg border border-gray-200 overflow-x-auto">
@@ -161,20 +188,25 @@ const SellerAcquisicionLotesContent = () => {
             </SelectContent>
           </Select>
 
-          {(filters.searchQuery || filters.category || filters.stockStatus !== "all") && <Button variant="ghost" size="sm" onClick={() => setFilters({
-          searchQuery: "",
-          category: null,
-          stockStatus: "all",
-          sortBy: "newest"
-        })} className="text-blue-600 hover:text-blue-700 text-xs h-8 whitespace-nowrap">
+          {(filters.searchQuery || filters.category || filters.stockStatus !== "all") && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setFilters({
+                searchQuery: "",
+                category: null,
+                stockStatus: "all",
+                sortBy: "newest"
+              })}
+              className="text-blue-600 hover:text-blue-700 text-xs h-8 whitespace-nowrap"
+            >
               Limpiar filtros
-            </Button>}
+            </Button>
+          )}
         </div>
 
         {/* Resultados */}
         <div className="mb-8">
-          
-
           {productsLoading && allProducts.length === 0 ? (
             <div className="flex items-center justify-center py-12">
               <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
@@ -189,12 +221,12 @@ const SellerAcquisicionLotesContent = () => {
             <>
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-1 md:gap-2">
                 {allProducts.map(product => (
-                  <ProductCardB2B 
-                    key={product.id} 
-                    product={product} 
-                    onAddToCart={handleAddToCart} 
-                    cartItem={cart.items.find(item => item.productId === product.id)} 
-                    whatsappNumber={whatsappNumber} 
+                  <ProductCardB2B
+                    key={product.id}
+                    product={product}
+                    onAddToCart={handleAddToCart}
+                    cartItem={cart.items.find(item => item.productId === product.id)}
+                    whatsappNumber={whatsappNumber}
                   />
                 ))}
               </div>
@@ -214,14 +246,17 @@ const SellerAcquisicionLotesContent = () => {
       </main>
 
       {/* Carrito Flotante */}
-      <CartSidebarB2B cart={cart} onUpdateQuantity={updateQuantity} onRemoveItem={removeItem} isOpen={isCartOpen} onToggle={() => setIsCartOpen(!isCartOpen)} />
+      <CartSidebarB2B
+        cart={cart}
+        onUpdateQuantity={updateQuantity}
+        onRemoveItem={removeItem}
+        isOpen={isCartOpen}
+        onToggle={() => setIsCartOpen(!isCartOpen)}
+      />
 
       <Footer />
-    </div>;
+    </div>
+  );
 };
-const SellerAcquisicionLotes = () => {
-  return <SellerLayout>
-      <SellerAcquisicionLotesContent />
-    </SellerLayout>;
-};
+
 export default SellerAcquisicionLotes;
