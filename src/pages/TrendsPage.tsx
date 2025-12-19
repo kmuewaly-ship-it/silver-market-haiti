@@ -1,20 +1,18 @@
 import { useEffect, useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { Clock, ArrowRight, Filter, X } from "lucide-react";
-import { useProducts } from "@/hooks/useProducts";
+import { Filter, X } from "lucide-react";
 import { usePublicCategories } from "@/hooks/useCategories";
 import { useTrendingProducts } from "@/hooks/useTrendingProducts";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
-import ProductCard from "@/components/landing/ProductCard";
 import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { useIsMobile } from "@/hooks/use-mobile";
 import FeaturedCarousel from "@/components/shared/FeaturedCarousel";
 import TrendingStoresSection from "@/components/trends/TrendingStoresSection";
+import TrendingCategoriesSection from "@/components/trends/TrendingCategoriesSection";
 import { useAuth } from "@/hooks/useAuth";
 import { UserRole } from "@/types/auth";
 const TrendsPage = () => {
@@ -24,10 +22,6 @@ const TrendsPage = () => {
     role,
     user
   } = useAuth();
-  const {
-    data: productsData,
-    isLoading: productsLoading
-  } = useProducts(0, 50);
   const {
     data: categories,
     isLoading: categoriesLoading
@@ -49,11 +43,11 @@ const TrendsPage = () => {
     window.scrollTo(0, 0);
   }, []);
 
-  // Calculate max price from products
+  // Calculate max price from trending products
   const maxPrice = useMemo(() => {
-    if (!productsData?.products) return 1000;
-    return Math.max(...productsData.products.map(p => p.precio_sugerido_venta || p.precio_mayorista || 0), 1000);
-  }, [productsData]);
+    if (!trendingProducts) return 1000;
+    return Math.max(...trendingProducts.map(p => p.precio_sugerido_venta || p.precio_mayorista || 0), 1000);
+  }, [trendingProducts]);
 
   // Get filtered and sorted trending products
   const filteredTrendingProducts = useMemo(() => {
@@ -76,26 +70,10 @@ const TrendsPage = () => {
     } else if (sortBy === "price-high") {
       products = [...products].sort((a, b) => (b.precio_sugerido_venta || b.precio_mayorista) - (a.precio_sugerido_venta || a.precio_mayorista));
     }
-    // "trending" is default order from API
 
     return products;
   }, [trendingProducts, selectedCategory, priceRange, sortBy]);
 
-  // Get new arrivals (recent products)
-  const newArrivals = useMemo(() => {
-    let products = productsData?.products.slice(0, 16) || [];
-    if (selectedCategory !== "all") {
-      products = products.filter(p => p.categoria_id === selectedCategory);
-    }
-    products = products.filter(p => {
-      const price = p.precio_sugerido_venta || p.precio_mayorista || 0;
-      return price >= priceRange[0] && price <= priceRange[1];
-    });
-    return products.slice(0, 8);
-  }, [productsData, selectedCategory, priceRange]);
-
-  // Get top categories (root categories)
-  const topCategories = categories?.filter(c => !c.parent_id).slice(0, 6) || [];
   const clearFilters = () => {
     setSelectedCategory("all");
     setPriceRange([0, maxPrice]);
@@ -237,43 +215,8 @@ const TrendsPage = () => {
           {/* Trending Stores Section */}
           <TrendingStoresSection />
 
-          {/* Categories Section */}
-          
-
-          {/* New Arrivals Section */}
-          <section>
-            <div className="flex items-center justify-between mb-8">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-blue-100 rounded-full text-blue-600">
-                  <Clock className="w-6 h-6" />
-                </div>
-                <div>
-                  <h2 className="text-2xl font-bold text-gray-900">Recién Llegados</h2>
-                  <p className="text-gray-500 text-sm">Lo último que hemos agregado al catálogo</p>
-                </div>
-              </div>
-              <Button variant="ghost" className="gap-2" onClick={() => navigate('/categorias')}>
-                Ver todo <ArrowRight className="w-4 h-4" />
-              </Button>
-            </div>
-
-            {productsLoading ? <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-                {[...Array(4)].map((_, i) => <div key={i} className="space-y-4">
-                    <Skeleton className="h-64 w-full rounded-xl" />
-                    <Skeleton className="h-4 w-3/4" />
-                    <Skeleton className="h-4 w-1/2" />
-                  </div>)}
-              </div> : newArrivals.length > 0 ? <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-                {newArrivals.map(product => <ProductCard key={product.id} product={{
-              id: product.id,
-              name: product.nombre,
-              price: product.precio_sugerido_venta || product.precio_mayorista,
-              image: product.imagen_principal || '/placeholder.svg'
-            }} />)}
-              </div> : <div className="text-center py-12 text-gray-500">
-                No hay productos nuevos que coincidan con los filtros.
-              </div>}
-          </section>
+          {/* Trending Categories Section */}
+          <TrendingCategoriesSection />
         </div>
       </div>
       {!isMobile && <Footer />}
