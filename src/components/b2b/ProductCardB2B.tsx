@@ -183,17 +183,19 @@ const ProductCardB2B = ({ product, onAddToCart, cartItem, whatsappNumber = "5031
               <Button
                 variant="outline"
                 size="sm"
-                className="h-8 text-xs border-green-600 text-green-600 hover:bg-green-50"
+                className="h-8 px-3 text-xs font-medium border-emerald-500 text-emerald-600 hover:bg-emerald-50 hover:border-emerald-600 transition-colors"
                 onClick={handleWhatsApp}
               >
+                <MessageCircle className="w-3.5 h-3.5 mr-1.5" />
                 Contactar
               </Button>
               <Button
                 size="sm"
-                className="h-8 text-xs bg-blue-600 hover:bg-blue-700"
+                className="h-8 px-3 text-xs font-medium bg-primary hover:bg-primary/90 text-primary-foreground transition-colors"
                 onClick={handleAddToCart}
                 disabled={isOutOfStock}
               >
+                <ShoppingCart className="w-3.5 h-3.5 mr-1.5" />
                 Agregar
               </Button>
             </div>
