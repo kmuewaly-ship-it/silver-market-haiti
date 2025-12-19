@@ -70,8 +70,10 @@ const TrendsPage = () => {
     } else if (sortBy === "price-high") {
       products = [...products].sort((a, b) => (b.precio_sugerido_venta || b.precio_mayorista) - (a.precio_sugerido_venta || a.precio_mayorista));
     }
+
     return products;
   }, [trendingProducts, selectedCategory, priceRange, sortBy]);
+
   const clearFilters = () => {
     setSelectedCategory("all");
     setPriceRange([0, maxPrice]);
@@ -147,7 +149,67 @@ const TrendsPage = () => {
 
       <div className={`container mx-auto px-4 py-12 ${isMobile ? 'pb-20' : ''}`}>
         {/* Filters Bar */}
-        
+        <div className="flex flex-wrap items-center justify-between gap-4 mb-8 bg-white p-4 rounded-lg shadow-sm">
+          {/* Desktop Filters */}
+          <div className="hidden md:flex items-center gap-4 flex-1">
+            <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+              <SelectTrigger className="w-[200px]">
+                <SelectValue placeholder="Categoría" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todas las categorías</SelectItem>
+                {categories?.filter(c => !c.parent_id).map(cat => <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>)}
+              </SelectContent>
+            </Select>
+
+            <Select value={sortBy} onValueChange={setSortBy}>
+              <SelectTrigger className="w-[180px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="trending">Más populares</SelectItem>
+                <SelectItem value="price-low">Menor precio</SelectItem>
+                <SelectItem value="price-high">Mayor precio</SelectItem>
+              </SelectContent>
+            </Select>
+
+            <div className="flex items-center gap-2 text-sm text-gray-600">
+              <span>Precio:</span>
+              <div className="w-48">
+                <Slider value={priceRange} onValueChange={value => setPriceRange(value as [number, number])} min={0} max={maxPrice} step={10} />
+              </div>
+              <span className="text-xs">${priceRange[0]}-${priceRange[1]}</span>
+            </div>
+          </div>
+
+          {/* Mobile Filter Button */}
+          <Sheet open={filtersOpen} onOpenChange={setFiltersOpen}>
+            <SheetTrigger asChild className="md:hidden">
+              <Button variant="outline" className="gap-2">
+                <Filter className="w-4 h-4" />
+                Filtros
+                {hasActiveFilters && <span className="w-2 h-2 bg-red-500 rounded-full" />}
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="left">
+              <SheetHeader>
+                <SheetTitle>Filtros</SheetTitle>
+              </SheetHeader>
+              <div className="mt-6">
+                <FilterControls />
+              </div>
+            </SheetContent>
+          </Sheet>
+
+          {hasActiveFilters && <Button variant="ghost" size="sm" onClick={clearFilters} className="text-gray-500">
+              <X className="w-4 h-4 mr-1" />
+              Limpiar
+            </Button>}
+
+          <div className="text-sm text-gray-500">
+            {filteredTrendingProducts.length} productos
+          </div>
+        </div>
 
         <div className="space-y-16">
           {/* Trending Stores Section */}
