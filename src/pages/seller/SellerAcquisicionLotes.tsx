@@ -9,119 +9,105 @@ import CartSidebarB2B from "@/components/b2b/CartSidebarB2B";
 import { B2BFilters, CartItemB2B } from "@/types/b2b";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useProductsB2B, useFeaturedProductsB2B } from "@/hooks/useProductsB2B";
-
 import { Button } from "@/components/ui/button";
 import { ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
 import FeaturedProductsCarousel from "@/components/b2b/FeaturedProductsCarousel";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 const SellerAcquisicionLotesContent = () => {
-  const { user, isLoading: authLoading } = useAuth();
-  const { cart, addItem, updateQuantity, removeItem } = useCartB2B();
+  const {
+    user,
+    isLoading: authLoading
+  } = useAuth();
+  const {
+    cart,
+    addItem,
+    updateQuantity,
+    removeItem
+  } = useCartB2B();
   const isMobile = useIsMobile();
-  
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(0);
   const itemsPerPage = 12;
-  
   const [filters, setFilters] = useState<B2BFilters>({
     searchQuery: "",
     category: null,
     stockStatus: "all",
     sortBy: "newest"
   });
-  
   const [whatsappNumber, setWhatsappNumber] = useState("50369596772");
-  
+
   // Fetch products from database
-  const { data: productsData, isLoading: productsLoading } = useProductsB2B(filters, currentPage, itemsPerPage);
-  const { data: featuredProducts = [] } = useFeaturedProductsB2B(6);
-  
+  const {
+    data: productsData,
+    isLoading: productsLoading
+  } = useProductsB2B(filters, currentPage, itemsPerPage);
+  const {
+    data: featuredProducts = []
+  } = useFeaturedProductsB2B(6);
   const products = productsData?.products || [];
   const totalProducts = productsData?.total || 0;
   const totalPages = Math.ceil(totalProducts / itemsPerPage);
-
   useEffect(() => {
     const saved = localStorage.getItem("admin_whatsapp_b2b");
     if (saved) setWhatsappNumber(saved);
   }, []);
-
   useEffect(() => {
     setCurrentPage(0);
   }, [filters]);
-
   const handleAddToCart = (item: CartItemB2B) => {
     addItem(item);
   };
-
   const handleCategorySelect = (categoryId: string | null) => {
     setFilters({
       ...filters,
       category: categoryId
     });
   };
-
   const handleHeaderSearch = (query: string) => {
     setFilters({
       ...filters,
       searchQuery: query
     });
   };
-
   const handleSortChange = (value: string) => {
     setFilters({
       ...filters,
       sortBy: value as B2BFilters["sortBy"]
     });
   };
-
   const handleStockFilterChange = (value: string) => {
     setFilters({
       ...filters,
       stockStatus: value as B2BFilters["stockStatus"]
     });
   };
-
   const isLoading = authLoading || productsLoading;
-
   if (authLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
+    return <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
           <Loader2 className="h-12 w-12 animate-spin text-blue-500 mx-auto mb-4" />
           <p>Cargando...</p>
         </div>
-      </div>
-    );
+      </div>;
   }
-
   const startIndex = currentPage * itemsPerPage;
   const endIndex = Math.min(startIndex + itemsPerPage, totalProducts);
-
-  return (
-    <div className="min-h-screen bg-gray-50">
-      <HeaderB2B 
-        selectedCategoryId={filters.category} 
-        onCategorySelect={handleCategorySelect} 
-        onSearch={handleHeaderSearch} 
-      />
+  return <div className="min-h-screen bg-gray-50">
+      
       
       <main className="container mx-auto px-4 pb-24 pt-4">
         {/* Hero Carousel (Mobile Only) */}
-        {isMobile && featuredProducts.length > 0 && (
-          <div className="mb-6 -mx-4">
+        {isMobile && featuredProducts.length > 0 && <div className="mb-6 -mx-4">
             <FeaturedProductsCarousel products={featuredProducts} />
-          </div>
-        )}
+          </div>}
 
         {/* Encabezado Desktop */}
-        {!isMobile && (
-          <div className="mb-6">
+        {!isMobile && <div className="mb-6">
             <h1 className="text-2xl font-bold text-gray-900 mb-2">Catálogo Mayorista</h1>
             <p className="text-gray-600">
               Bienvenido, {user?.name || "Vendedor"}. Explora nuestro catálogo de productos al por mayor.
             </p>
-          </div>
-        )}
+          </div>}
 
         {/* Filtros inline */}
         <div className="flex flex-wrap items-center gap-3 mb-6 bg-white p-4 rounded-lg border border-gray-200">
@@ -156,16 +142,14 @@ const SellerAcquisicionLotesContent = () => {
             </Select>
           </div>
 
-          {(filters.searchQuery || filters.category || filters.stockStatus !== "all") && (
-            <Button 
-              variant="ghost" 
-              size="sm"
-              onClick={() => setFilters({ searchQuery: "", category: null, stockStatus: "all", sortBy: "newest" })}
-              className="text-blue-600 hover:text-blue-700"
-            >
+          {(filters.searchQuery || filters.category || filters.stockStatus !== "all") && <Button variant="ghost" size="sm" onClick={() => setFilters({
+          searchQuery: "",
+          category: null,
+          stockStatus: "all",
+          sortBy: "newest"
+        })} className="text-blue-600 hover:text-blue-700">
               Limpiar filtros
-            </Button>
-          )}
+            </Button>}
         </div>
 
         {/* Resultados */}
@@ -174,108 +158,65 @@ const SellerAcquisicionLotesContent = () => {
             <h2 className="text-lg font-bold text-gray-900">
               Productos ({totalProducts} encontrados)
             </h2>
-            {totalProducts > 0 && (
-              <div className="text-sm text-gray-600">
+            {totalProducts > 0 && <div className="text-sm text-gray-600">
                 Mostrando {startIndex + 1}-{endIndex} de {totalProducts}
-              </div>
-            )}
+              </div>}
           </div>
 
-          {productsLoading ? (
-            <div className="flex items-center justify-center py-12">
+          {productsLoading ? <div className="flex items-center justify-center py-12">
               <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
-            </div>
-          ) : products.length === 0 ? (
-            <div className="bg-white rounded-lg p-12 text-center">
+            </div> : products.length === 0 ? <div className="bg-white rounded-lg p-12 text-center">
               <p className="text-gray-600">
                 No se encontraron productos que coincidan con tus filtros.
               </p>
-            </div>
-          ) : (
-            <>
+            </div> : <>
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 md:gap-4">
-                {products.map(product => (
-                  <ProductCardB2B 
-                    key={product.id} 
-                    product={product} 
-                    onAddToCart={handleAddToCart} 
-                    cartItem={cart.items.find(item => item.productId === product.id)} 
-                    whatsappNumber={whatsappNumber} 
-                  />
-                ))}
+                {products.map(product => <ProductCardB2B key={product.id} product={product} onAddToCart={handleAddToCart} cartItem={cart.items.find(item => item.productId === product.id)} whatsappNumber={whatsappNumber} />)}
               </div>
 
               {/* Paginación */}
-              {totalPages > 1 && (
-                <div className="flex items-center justify-center gap-2 mt-8">
-                  <Button
-                    variant="outline"
-                    onClick={() => setCurrentPage(Math.max(0, currentPage - 1))}
-                    disabled={currentPage === 0}
-                  >
+              {totalPages > 1 && <div className="flex items-center justify-center gap-2 mt-8">
+                  <Button variant="outline" onClick={() => setCurrentPage(Math.max(0, currentPage - 1))} disabled={currentPage === 0}>
                     {isMobile ? <ChevronLeft className="h-5 w-5" /> : "← Anterior"}
                   </Button>
 
                   <div className="flex gap-1">
-                    {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
-                      let pageNum = i;
-                      if (totalPages > 5) {
-                        if (currentPage < 2) {
-                          pageNum = i;
-                        } else if (currentPage > totalPages - 3) {
-                          pageNum = totalPages - 5 + i;
-                        } else {
-                          pageNum = currentPage - 2 + i;
-                        }
-                      }
-                      return (
-                        <Button
-                          key={pageNum}
-                          variant={currentPage === pageNum ? "default" : "outline"}
-                          size="sm"
-                          onClick={() => setCurrentPage(pageNum)}
-                          className={currentPage === pageNum ? "bg-blue-600 hover:bg-blue-700" : ""}
-                        >
+                    {Array.from({
+                length: Math.min(totalPages, 5)
+              }, (_, i) => {
+                let pageNum = i;
+                if (totalPages > 5) {
+                  if (currentPage < 2) {
+                    pageNum = i;
+                  } else if (currentPage > totalPages - 3) {
+                    pageNum = totalPages - 5 + i;
+                  } else {
+                    pageNum = currentPage - 2 + i;
+                  }
+                }
+                return <Button key={pageNum} variant={currentPage === pageNum ? "default" : "outline"} size="sm" onClick={() => setCurrentPage(pageNum)} className={currentPage === pageNum ? "bg-blue-600 hover:bg-blue-700" : ""}>
                           {pageNum + 1}
-                        </Button>
-                      );
-                    })}
+                        </Button>;
+              })}
                   </div>
 
-                  <Button
-                    variant="outline"
-                    onClick={() => setCurrentPage(Math.min(totalPages - 1, currentPage + 1))}
-                    disabled={currentPage === totalPages - 1}
-                  >
+                  <Button variant="outline" onClick={() => setCurrentPage(Math.min(totalPages - 1, currentPage + 1))} disabled={currentPage === totalPages - 1}>
                     {isMobile ? <ChevronRight className="h-5 w-5" /> : "Siguiente →"}
                   </Button>
-                </div>
-              )}
-            </>
-          )}
+                </div>}
+            </>}
         </div>
       </main>
 
       {/* Carrito Flotante */}
-      <CartSidebarB2B 
-        cart={cart} 
-        onUpdateQuantity={updateQuantity} 
-        onRemoveItem={removeItem} 
-        isOpen={isCartOpen} 
-        onToggle={() => setIsCartOpen(!isCartOpen)} 
-      />
+      <CartSidebarB2B cart={cart} onUpdateQuantity={updateQuantity} onRemoveItem={removeItem} isOpen={isCartOpen} onToggle={() => setIsCartOpen(!isCartOpen)} />
 
       <Footer />
-    </div>
-  );
+    </div>;
 };
-
 const SellerAcquisicionLotes = () => {
-  return (
-    <SellerLayout>
+  return <SellerLayout>
       <SellerAcquisicionLotesContent />
-    </SellerLayout>
-  );
+    </SellerLayout>;
 };
-
 export default SellerAcquisicionLotes;
