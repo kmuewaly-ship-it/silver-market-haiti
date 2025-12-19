@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { usePublicCategories, Category } from "@/hooks/useCategories";
 import { Skeleton } from "@/components/ui/skeleton";
-import Header from "@/components/layout/Header";
+import GlobalHeader from "@/components/layout/GlobalHeader";
 import Footer from "@/components/layout/Footer";
 import { ChevronRight } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -54,7 +54,7 @@ const CategoriesPage = () => {
   if (isLoading) {
     return (
       <div className="min-h-screen bg-white">
-        {!isMobile && <Header />}
+        {!isMobile && <GlobalHeader />}
         <main className="container mx-auto px-4 pb-8">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             {Array.from({ length: 12 }).map((_, i) => (
@@ -188,7 +188,7 @@ const CategoriesPage = () => {
   // Desktop Layout
   return (
     <div className="min-h-screen bg-gray-50">
-      <Header />
+      <GlobalHeader />
 
       <main className="container mx-auto px-4 pb-8">
         {/* Breadcrumb */}

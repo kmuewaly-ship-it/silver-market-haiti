@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useLocation, useNavigate, Link } from "react-router-dom";
-import { Mail, Search, Heart, X, Loader2, Mic, MicOff, Camera, ShoppingBag } from "lucide-react";
+import { Mail, Search, Heart, X, Loader2, Mic, MicOff, Camera, ShoppingBag, Package } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { usePublicCategories } from "@/hooks/useCategories";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -8,7 +8,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { searchProductsByImage } from "@/services/api/imageSearch";
 import { useCart } from "@/hooks/useCart";
-
+import { useCartB2B } from "@/hooks/useCartB2B";
+import { useAuth } from "@/hooks/useAuth";
+import { UserRole } from "@/types/auth";
 interface SearchResult {
   id: string;
   nombre: string;
@@ -83,7 +85,14 @@ const GlobalMobileHeader = ({ forceShow = false }: GlobalMobileHeaderProps) => {
   const isMobile = useIsMobile();
   const { data: categories = [] } = usePublicCategories();
   const { totalItems } = useCart();
-  const cartCount = totalItems();
+  const { cart: cartB2B } = useCartB2B();
+  const { role } = useAuth();
+  
+  // Determinar si es seller/admin para mostrar header B2B
+  const isSellerOrAdmin = role === UserRole.SELLER || role === UserRole.ADMIN;
+  
+  // Usar carrito B2B para seller/admin, B2C para clientes
+  const cartCount = isSellerOrAdmin ? cartB2B.totalItems : totalItems();
 
   // Bounce animation when cart count increases
   useEffect(() => {
@@ -160,7 +169,9 @@ const GlobalMobileHeader = ({ forceShow = false }: GlobalMobileHeaderProps) => {
     return () => clearTimeout(debounce);
   }, [searchQuery]);
 
-  if (!isMobile || isAdminRoute || isLoginRoute || isTrendsRoute || (isSellerRoute && !forceShow)) {
+  // No mostrar en admin routes, login, o trends (a menos que forceShow)
+  // Para sellers, mostrar en TODAS las rutas (incluyendo públicas) con estilo B2B
+  if (!isMobile || isAdminRoute || isLoginRoute || isTrendsRoute) {
     return null;
   }
 
@@ -304,17 +315,32 @@ const GlobalMobileHeader = ({ forceShow = false }: GlobalMobileHeaderProps) => {
     }
   };
 
+  // Links dinámicos según rol
+  const favoritesLink = isSellerOrAdmin ? "/seller/favoritos" : "/favoritos";
+  const cartLink = isSellerOrAdmin ? "/seller/carrito" : "/carrito";
+  const accentColor = isSellerOrAdmin ? "bg-blue-600" : "bg-red-500";
+  const buttonColor = isSellerOrAdmin ? "bg-blue-600 hover:bg-blue-700" : "bg-gray-900 hover:bg-gray-800";
+
   return (
     <header className="bg-white sticky top-0 z-40">
       {/* Top search bar */}
       <div className="flex items-center gap-3 px-3 py-2.5">
-        {/* Notification/Mail icon */}
-        <button className="relative flex-shrink-0">
-          <Mail className="w-6 h-6 text-gray-700" strokeWidth={1.5} />
-          <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center px-1">
-            5
-          </span>
-        </button>
+        {/* Logo/Icon for B2B sellers */}
+        {isSellerOrAdmin ? (
+          <Link to="/seller/adquisicion-lotes" className="flex items-center gap-1 flex-shrink-0">
+            <div className="w-8 h-8 rounded bg-blue-600 flex items-center justify-center">
+              <Package className="w-4 h-4 text-white" />
+            </div>
+            <span className="font-bold text-xs text-gray-900">B2B</span>
+          </Link>
+        ) : (
+          <button className="relative flex-shrink-0">
+            <Mail className="w-6 h-6 text-gray-700" strokeWidth={1.5} />
+            <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center px-1">
+              5
+            </span>
+          </button>
+        )}
 
         {/* Search input with dropdown */}
         <div ref={searchRef} className="flex-1 max-w-[60%] relative">
@@ -371,7 +397,7 @@ const GlobalMobileHeader = ({ forceShow = false }: GlobalMobileHeaderProps) => {
                 )}
               </button>
             )}
-            <button type="submit" className="bg-gray-900 hover:bg-gray-800 p-2 rounded-full m-0.5 transition-colors">
+            <button type="submit" className={cn(buttonColor, "p-2 rounded-full m-0.5 transition-colors")}>
               {isSearching ? (
                 <Loader2 className="w-4 h-4 text-white animate-spin" />
               ) : (
@@ -407,13 +433,18 @@ const GlobalMobileHeader = ({ forceShow = false }: GlobalMobileHeaderProps) => {
                       <div className="flex-1 text-left">
                         <p className="text-sm font-medium text-gray-900 line-clamp-1">{product.nombre}</p>
                         <p className="text-xs text-gray-500">SKU: {product.sku_interno}</p>
-                        <p className="text-sm font-bold text-green-600">${product.precio_mayorista.toFixed(2)}</p>
+                        <p className={cn("text-sm font-bold", isSellerOrAdmin ? "text-blue-600" : "text-green-600")}>
+                          ${product.precio_mayorista.toFixed(2)}
+                        </p>
                       </div>
                     </button>
                   ))}
                   <button
                     onClick={handleSearch}
-                    className="w-full p-3 text-center text-sm font-medium text-blue-600 hover:bg-blue-50 transition-colors"
+                    className={cn(
+                      "w-full p-3 text-center text-sm font-medium transition-colors",
+                      isSellerOrAdmin ? "text-blue-600 hover:bg-blue-50" : "text-blue-600 hover:bg-blue-50"
+                    )}
                   >
                     Ver todos los resultados para "{searchQuery}"
                   </button>
@@ -428,17 +459,18 @@ const GlobalMobileHeader = ({ forceShow = false }: GlobalMobileHeaderProps) => {
         </div>
 
         {/* Favorites heart */}
-        <Link to="/favoritos" className="relative flex-shrink-0">
+        <Link to={favoritesLink} className="relative flex-shrink-0">
           <Heart className="w-6 h-6 text-gray-700" strokeWidth={1.5} />
-          <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white" />
+          <span className={cn("absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-white", accentColor)} />
         </Link>
 
         {/* Cart */}
-        <Link to="/carrito" className="relative flex-shrink-0">
+        <Link to={cartLink} className="relative flex-shrink-0">
           <ShoppingBag className="w-6 h-6 text-gray-700" strokeWidth={1.5} />
           {cartCount > 0 && (
             <span className={cn(
-              "absolute -top-1 -right-1 min-w-[18px] h-[18px] bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center px-1",
+              "absolute -top-1 -right-1 min-w-[18px] h-[18px] text-white text-[10px] font-bold rounded-full flex items-center justify-center px-1",
+              accentColor,
               cartBounce && "animate-cart-shake"
             )}>
               {cartCount > 99 ? '99+' : cartCount}
@@ -447,11 +479,14 @@ const GlobalMobileHeader = ({ forceShow = false }: GlobalMobileHeaderProps) => {
         </Link>
       </div>
 
-      {/* Category tabs - horizontal scroll with black background */}
-      <div className="flex items-center gap-4 px-3 py-2.5 overflow-x-auto scrollbar-hide bg-black">
+      {/* Category tabs - horizontal scroll with dynamic background */}
+      <div className={cn(
+        "flex items-center gap-4 px-3 py-2.5 overflow-x-auto scrollbar-hide",
+        isSellerOrAdmin ? "bg-gray-900" : "bg-black"
+      )}>
         {/* "All" tab */}
         <button
-          onClick={() => navigate("/categorias")}
+          onClick={() => navigate(isSellerOrAdmin ? "/seller/adquisicion-lotes" : "/categorias")}
           className={cn(
             "text-sm font-medium whitespace-nowrap pb-0.5 transition-colors",
             isCategoriesPage && !selectedCategory
@@ -459,7 +494,7 @@ const GlobalMobileHeader = ({ forceShow = false }: GlobalMobileHeaderProps) => {
               : "text-gray-400 hover:text-white"
           )}
         >
-          All
+          {isSellerOrAdmin ? "Todos" : "All"}
         </button>
 
         {rootCategories.map((category) => (
