@@ -1,11 +1,57 @@
 import { useState, useRef, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { ShoppingBag, Search, Heart, User, Mail, Camera, Loader2, Mic, MicOff, Package } from "lucide-react";
+import { ShoppingBag, Search, Heart, User, Camera, Loader2, Mic, MicOff, Package } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { usePublicCategories } from "@/hooks/useCategories";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
 import { useCartB2B } from "@/hooks/useCartB2B";
+import { searchProductsByImage } from "@/services/api/imageSearch";
+import { toast } from "sonner";
+
+// Web Speech API types
+interface SpeechRecognitionEvent extends Event {
+  results: SpeechRecognitionResultList;
+  resultIndex: number;
+}
+
+interface SpeechRecognitionResultList {
+  length: number;
+  item(index: number): SpeechRecognitionResult;
+  [index: number]: SpeechRecognitionResult;
+}
+
+interface SpeechRecognitionResult {
+  length: number;
+  item(index: number): SpeechRecognitionAlternative;
+  [index: number]: SpeechRecognitionAlternative;
+  isFinal: boolean;
+}
+
+interface SpeechRecognitionAlternative {
+  transcript: string;
+  confidence: number;
+}
+
+interface SpeechRecognition extends EventTarget {
+  continuous: boolean;
+  interimResults: boolean;
+  lang: string;
+  start(): void;
+  stop(): void;
+  abort(): void;
+  onresult: ((event: SpeechRecognitionEvent) => void) | null;
+  onerror: ((event: Event & { error: string }) => void) | null;
+  onend: (() => void) | null;
+  onstart: (() => void) | null;
+}
+
+declare global {
+  interface Window {
+    SpeechRecognition: new () => SpeechRecognition;
+    webkitSpeechRecognition: new () => SpeechRecognition;
+  }
+}
 
 interface HeaderB2BProps {
   selectedCategoryId?: string | null;
@@ -21,8 +67,10 @@ const HeaderB2B = ({
   const [searchQuery, setSearchQuery] = useState("");
   const [isListening, setIsListening] = useState(false);
   const [voiceSupported, setVoiceSupported] = useState(false);
+  const [isImageSearching, setIsImageSearching] = useState(false);
   const isMobile = useIsMobile();
-  const recognitionRef = useRef<any>(null);
+  const recognitionRef = useRef<SpeechRecognition | null>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
   const { cart } = useCartB2B();
   const cartCount = cart.totalItems;
 
@@ -33,7 +81,7 @@ const HeaderB2B = ({
   const [hasOverflow, setHasOverflow] = useState(false);
 
   useEffect(() => {
-    const SpeechRecognitionAPI = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    const SpeechRecognitionAPI = window.SpeechRecognition || window.webkitSpeechRecognition;
     setVoiceSupported(!!SpeechRecognitionAPI);
   }, []);
 
@@ -72,6 +120,103 @@ const HeaderB2B = ({
     onCategorySelect?.(categoryId);
   };
 
+  const handleImageSearch = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsImageSearching(true);
+    toast.info("Cargando modelo de IA... Esto puede tomar unos segundos la primera vez.");
+
+    try {
+      const results = await searchProductsByImage(file);
+      if (results && results.length > 0) {
+        sessionStorage.setItem('imageSearchResults', JSON.stringify(results));
+        navigate('/seller/adquisicion-lotes?source=image');
+        toast.success(`Se encontraron ${results.length} productos similares`);
+      } else {
+        toast.info("No se encontraron productos similares");
+      }
+    } catch (error) {
+      console.error("Image search error:", error);
+      toast.error("Error al buscar por imagen");
+    } finally {
+      setIsImageSearching(false);
+      if (imageInputRef.current) {
+        imageInputRef.current.value = '';
+      }
+    }
+  };
+
+  const startVoiceSearch = () => {
+    const SpeechRecognitionAPI = window.SpeechRecognition || window.webkitSpeechRecognition;
+    
+    if (!SpeechRecognitionAPI) {
+      toast.error("Búsqueda por voz no soportada en este navegador");
+      return;
+    }
+
+    if (isListening && recognitionRef.current) {
+      recognitionRef.current.stop();
+      return;
+    }
+
+    const recognition = new SpeechRecognitionAPI();
+    recognition.continuous = false;
+    recognition.interimResults = true;
+    recognition.lang = 'es-ES';
+
+    recognition.onstart = () => {
+      setIsListening(true);
+      toast.info("Escuchando...", { duration: 2000 });
+    };
+
+    recognition.onresult = (event: SpeechRecognitionEvent) => {
+      let finalTranscript = '';
+      let interimTranscript = '';
+
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        const transcript = event.results[i][0].transcript;
+        if (event.results[i].isFinal) {
+          finalTranscript += transcript;
+        } else {
+          interimTranscript += transcript;
+        }
+      }
+
+      if (interimTranscript) {
+        setSearchQuery(interimTranscript);
+      }
+
+      if (finalTranscript) {
+        setSearchQuery(finalTranscript);
+        toast.success(`Buscando: "${finalTranscript}"`);
+        onSearch?.(finalTranscript);
+      }
+    };
+
+    recognition.onerror = (event) => {
+      console.error("Speech recognition error:", event.error);
+      setIsListening(false);
+      
+      if (event.error === 'no-speech') {
+        toast.error("No se detectó ninguna voz. Intenta de nuevo.");
+      } else if (event.error === 'audio-capture') {
+        toast.error("No se pudo acceder al micrófono.");
+      } else if (event.error === 'not-allowed') {
+        toast.error("Permiso de micrófono denegado.");
+      } else {
+        toast.error("Error al reconocer voz. Intenta de nuevo.");
+      }
+    };
+
+    recognition.onend = () => {
+      setIsListening(false);
+    };
+
+    recognitionRef.current = recognition;
+    recognition.start();
+  };
+
   if (isMobile) {
     return (
       <>
@@ -94,6 +239,47 @@ const HeaderB2B = ({
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="flex-1 bg-transparent text-sm text-gray-700 placeholder-gray-500 px-4 py-2 outline-none"
               />
+              {/* Hidden file input for image search */}
+              <input
+                ref={imageInputRef}
+                type="file"
+                accept="image/*"
+                capture="environment"
+                className="hidden"
+                onChange={handleImageSearch}
+              />
+              {/* Camera icon for image search */}
+              <button
+                type="button"
+                onClick={() => imageInputRef.current?.click()}
+                disabled={isImageSearching}
+                className="p-1 text-gray-500 hover:text-blue-600 transition-colors disabled:opacity-50"
+              >
+                {isImageSearching ? (
+                  <Loader2 className="w-5 h-5 animate-spin" strokeWidth={1.5} />
+                ) : (
+                  <Camera className="w-5 h-5" strokeWidth={1.5} />
+                )}
+              </button>
+              {/* Voice search button */}
+              {voiceSupported && (
+                <button 
+                  type="button" 
+                  onClick={startVoiceSearch}
+                  className={cn(
+                    "p-1 transition-colors",
+                    isListening 
+                      ? "text-red-500 animate-pulse" 
+                      : "text-gray-500 hover:text-blue-600"
+                  )}
+                >
+                  {isListening ? (
+                    <MicOff className="w-5 h-5" strokeWidth={1.5} />
+                  ) : (
+                    <Mic className="w-5 h-5" strokeWidth={1.5} />
+                  )}
+                </button>
+              )}
               <button type="submit" className="bg-blue-600 hover:bg-blue-700 p-2 rounded-full m-0.5 transition-colors">
                 <Search className="w-4 h-4 text-white" strokeWidth={2} />
               </button>
@@ -189,8 +375,51 @@ const HeaderB2B = ({
                   placeholder="Buscar productos por nombre o SKU..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-4 pr-12 py-2 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="pl-4 pr-24 py-2 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
+                {/* Hidden file input for image search */}
+                <input
+                  ref={imageInputRef}
+                  type="file"
+                  accept="image/*"
+                  capture="environment"
+                  className="hidden"
+                  onChange={handleImageSearch}
+                />
+                <div className="absolute right-12 top-1/2 transform -translate-y-1/2 flex items-center gap-2">
+                  {/* Camera icon for image search */}
+                  <button
+                    type="button"
+                    onClick={() => imageInputRef.current?.click()}
+                    disabled={isImageSearching}
+                    className="text-gray-400 hover:text-blue-600 transition-colors disabled:opacity-50"
+                  >
+                    {isImageSearching ? (
+                      <Loader2 className="w-5 h-5 animate-spin" />
+                    ) : (
+                      <Camera className="w-5 h-5" />
+                    )}
+                  </button>
+                  {/* Voice search button */}
+                  {voiceSupported && (
+                    <button
+                      type="button"
+                      onClick={startVoiceSearch}
+                      className={cn(
+                        "transition-colors",
+                        isListening 
+                          ? "text-red-500 animate-pulse" 
+                          : "text-gray-400 hover:text-blue-600"
+                      )}
+                    >
+                      {isListening ? (
+                        <MicOff className="w-5 h-5" />
+                      ) : (
+                        <Mic className="w-5 h-5" />
+                      )}
+                    </button>
+                  )}
+                </div>
                 <button 
                   type="submit"
                   className="absolute right-1 top-1/2 transform -translate-y-1/2 bg-blue-600 hover:bg-blue-700 p-2 rounded-full transition-colors"
