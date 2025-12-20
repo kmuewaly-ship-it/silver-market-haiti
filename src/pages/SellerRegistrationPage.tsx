@@ -1,11 +1,12 @@
-﻿import { Link, useNavigate } from "react-router-dom";
-import { ArrowRight, CheckCircle, Users, Shield, TrendingUp, Loader2 } from "lucide-react";
+import { Link, useNavigate } from "react-router-dom";
+import { ArrowRight, CheckCircle, Users, Shield, TrendingUp, Loader2, LinkIcon, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { z } from "zod";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 const sellerRegistrationSchema = z.object({
   storeName: z.string().min(2, "El nombre de la tienda debe tener al menos 2 caracteres").max(100),
@@ -21,9 +22,21 @@ const sellerRegistrationSchema = z.object({
   path: ["confirmPassword"],
 });
 
+// Schema for linking existing account (no password required)
+const linkAccountSchema = z.object({
+  storeName: z.string().min(2, "El nombre de la tienda debe tener al menos 2 caracteres").max(100),
+  storeDescription: z.string().max(300, "La descripción no puede exceder 300 caracteres").optional(),
+  phone: z.string().min(8, "Teléfono debe tener al menos 8 dígitos").max(20),
+  country: z.string().min(1, "Selecciona un país"),
+  businessType: z.string().min(1, "Selecciona un tipo de negocio"),
+});
+
 const SellerRegistrationPage = () => {
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
+  const [isCheckingEmail, setIsCheckingEmail] = useState(false);
+  const [existingUserData, setExistingUserData] = useState<{ id: string; email: string; full_name: string | null } | null>(null);
+  const [showLinkOption, setShowLinkOption] = useState(false);
   const [formData, setFormData] = useState({
     storeName: "",
     storeDescription: "",
@@ -34,11 +47,121 @@ const SellerRegistrationPage = () => {
     password: "",
     confirmPassword: "",
   });
-  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [errors, setErrors] = useState<Record<string, string>>();
+
+  // Check if email exists when user leaves email field
+  const checkEmailExists = async (email: string) => {
+    if (!email || !email.includes('@')) return;
+    
+    setIsCheckingEmail(true);
+    setShowLinkOption(false);
+    setExistingUserData(null);
+    
+    try {
+      // Check if profile exists with this email
+      const { data: profile, error } = await supabase
+        .from('profiles')
+        .select('id, email, full_name')
+        .eq('email', email)
+        .maybeSingle();
+      
+      if (error) {
+        console.error('Error checking email:', error);
+        return;
+      }
+      
+      if (profile) {
+        // Check if user already has seller role
+        const { data: roleData } = await supabase
+          .from('user_roles')
+          .select('role')
+          .eq('user_id', profile.id)
+          .eq('role', 'seller')
+          .maybeSingle();
+        
+        if (roleData) {
+          setErrors(prev => ({ ...prev, email: 'Esta cuenta ya es vendedor. Inicia sesión.' }));
+        } else {
+          setExistingUserData(profile);
+          setShowLinkOption(true);
+        }
+      }
+    } catch (error) {
+      console.error('Error checking email:', error);
+    } finally {
+      setIsCheckingEmail(false);
+    }
+  };
+
+  // Handle linking existing account to seller
+  const handleLinkExistingAccount = async () => {
+    if (!existingUserData) return;
+    
+    // Validate only required fields for linking
+    const linkData = {
+      storeName: formData.storeName,
+      storeDescription: formData.storeDescription,
+      phone: formData.phone,
+      country: formData.country,
+      businessType: formData.businessType,
+    };
+    
+    const result = linkAccountSchema.safeParse(linkData);
+    if (!result.success) {
+      const fieldErrors: Record<string, string> = {};
+      result.error.errors.forEach((err) => {
+        if (err.path[0]) {
+          fieldErrors[err.path[0] as string] = err.message;
+        }
+      });
+      setErrors(fieldErrors);
+      return;
+    }
+    
+    setIsLoading(true);
+    
+    try {
+      // Create an admin approval request for the upgrade
+      const { error: requestError } = await supabase
+        .from('admin_approval_requests')
+        .insert({
+          requester_id: existingUserData.id,
+          request_type: 'seller_upgrade' as any,
+          status: 'pending',
+          metadata: {
+            user_email: existingUserData.email,
+            user_name: existingUserData.full_name,
+            store_name: formData.storeName,
+            store_description: formData.storeDescription,
+            phone: formData.phone,
+            country: formData.country,
+            business_type: formData.businessType,
+            requested_at: new Date().toISOString(),
+            source: 'seller_registration_form',
+          },
+        });
+      
+      if (requestError) throw requestError;
+      
+      toast.success('¡Solicitud enviada! Inicia sesión y un administrador aprobará tu cuenta vendedor.');
+      navigate('/login');
+    } catch (error) {
+      console.error('Error linking account:', error);
+      toast.error('Error al enviar la solicitud. Intenta de nuevo.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrors({});
+
+    // If showing link option, use that flow instead
+    if (showLinkOption && existingUserData) {
+      handleLinkExistingAccount();
+      return;
+    }
 
     // Validate form
     const result = sellerRegistrationSchema.safeParse(formData);
@@ -70,7 +193,11 @@ const SellerRegistrationPage = () => {
 
       if (authError) {
         if (authError.message.includes("already registered")) {
-          toast.error("Este email ya está registrado. Intenta iniciar sesión.");
+          // Check if we can show link option
+          await checkEmailExists(formData.email);
+          if (!showLinkOption) {
+            toast.error("Este email ya está registrado. Intenta iniciar sesión.");
+          }
         } else {
           toast.error(authError.message);
         }
@@ -297,19 +424,45 @@ const SellerRegistrationPage = () => {
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Email *
                 </label>
-                <Input
-                  type="email"
-                  placeholder="contacto@empresa.com"
-                  value={formData.email}
-                  onChange={(e) =>
-                    setFormData({ ...formData, email: e.target.value })
-                  }
-                  required
-                  className="w-full"
-                  disabled={isLoading}
-                />
-                {errors.email && (
+                <div className="relative">
+                  <Input
+                    type="email"
+                    placeholder="contacto@empresa.com"
+                    value={formData.email}
+                    onChange={(e) => {
+                      setFormData({ ...formData, email: e.target.value });
+                      setShowLinkOption(false);
+                      setExistingUserData(null);
+                    }}
+                    onBlur={(e) => checkEmailExists(e.target.value)}
+                    required
+                    className="w-full"
+                    disabled={isLoading}
+                  />
+                  {isCheckingEmail && (
+                    <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                      <Loader2 className="w-4 h-4 animate-spin text-gray-400" />
+                    </div>
+                  )}
+                </div>
+                {errors?.email && (
                   <p className="text-red-500 text-sm mt-1">{errors.email}</p>
+                )}
+                
+                {/* Link Existing Account Alert */}
+                {showLinkOption && existingUserData && (
+                  <Alert className="mt-3 border-indigo-200 bg-indigo-50">
+                    <LinkIcon className="h-4 w-4 text-indigo-600" />
+                    <AlertTitle className="text-indigo-800">¡Cuenta encontrada!</AlertTitle>
+                    <AlertDescription className="text-indigo-700">
+                      Ya existe una cuenta con este email ({existingUserData.full_name || 'Usuario'}). 
+                      Puedes vincular tu cuenta existente para ser vendedor sin crear una nueva.
+                      <br />
+                      <span className="text-sm text-indigo-600">
+                        Completa el formulario y enviaremos tu solicitud para aprobación.
+                      </span>
+                    </AlertDescription>
+                  </Alert>
                 )}
               </div>
 
@@ -382,56 +535,70 @@ const SellerRegistrationPage = () => {
                 )}
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Contraseña *
-                </label>
-                <Input
-                  type="password"
-                  placeholder="Mínimo 6 caracteres"
-                  value={formData.password}
-                  onChange={(e) =>
-                    setFormData({ ...formData, password: e.target.value })
-                  }
-                  required
-                  className="w-full"
-                  disabled={isLoading}
-                />
-                {errors.password && (
-                  <p className="text-red-500 text-sm mt-1">{errors.password}</p>
-                )}
-              </div>
+              {/* Only show password fields if NOT linking existing account */}
+              {!showLinkOption && (
+                <>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Contraseña *
+                    </label>
+                    <Input
+                      type="password"
+                      placeholder="Mínimo 6 caracteres"
+                      value={formData.password}
+                      onChange={(e) =>
+                        setFormData({ ...formData, password: e.target.value })
+                      }
+                      required
+                      className="w-full"
+                      disabled={isLoading}
+                    />
+                    {errors?.password && (
+                      <p className="text-red-500 text-sm mt-1">{errors.password}</p>
+                    )}
+                  </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Confirmar Contraseña *
-                </label>
-                <Input
-                  type="password"
-                  placeholder="Repite tu contraseña"
-                  value={formData.confirmPassword}
-                  onChange={(e) =>
-                    setFormData({ ...formData, confirmPassword: e.target.value })
-                  }
-                  required
-                  className="w-full"
-                  disabled={isLoading}
-                />
-                {errors.confirmPassword && (
-                  <p className="text-red-500 text-sm mt-1">{errors.confirmPassword}</p>
-                )}
-              </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Confirmar Contraseña *
+                    </label>
+                    <Input
+                      type="password"
+                      placeholder="Repite tu contraseña"
+                      value={formData.confirmPassword}
+                      onChange={(e) =>
+                        setFormData({ ...formData, confirmPassword: e.target.value })
+                      }
+                      required
+                      className="w-full"
+                      disabled={isLoading}
+                    />
+                    {errors?.confirmPassword && (
+                      <p className="text-red-500 text-sm mt-1">{errors.confirmPassword}</p>
+                    )}
+                  </div>
+                </>
+              )}
 
               <div className="pt-4">
                 <Button
                   type="submit"
-                  className="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-3 rounded-lg font-medium flex items-center justify-center gap-2 transition"
+                  className={`w-full py-3 rounded-lg font-medium flex items-center justify-center gap-2 transition ${
+                    showLinkOption 
+                      ? 'bg-green-600 hover:bg-green-700 text-white' 
+                      : 'bg-indigo-600 hover:bg-indigo-700 text-white'
+                  }`}
                   disabled={isLoading}
                 >
                   {isLoading ? (
                     <>
                       <Loader2 className="w-4 h-4 animate-spin" />
                       Procesando...
+                    </>
+                  ) : showLinkOption ? (
+                    <>
+                      <LinkIcon className="w-4 h-4" />
+                      Vincular Cuenta Existente
                     </>
                   ) : (
                     <>

@@ -1545,6 +1545,7 @@ export type Database = {
         | "referral_bonus"
         | "credit_limit_increase"
         | "credit_activation"
+        | "seller_upgrade"
       approval_status: "pending" | "approved" | "rejected"
       payment_method: "stripe" | "moncash" | "transfer"
       payment_status: "pending" | "verified" | "rejected"
@@ -1687,6 +1688,7 @@ export const Constants = {
         "referral_bonus",
         "credit_limit_increase",
         "credit_activation",
+        "seller_upgrade",
       ],
       approval_status: ["pending", "approved", "rejected"],
       payment_method: ["stripe", "moncash", "transfer"],

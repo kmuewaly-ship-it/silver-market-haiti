@@ -8,7 +8,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { 
-  User, Mail, Calendar, Package, MapPin, LogOut, Settings, Shield, CreditCard, Bell, Edit
+  User, Mail, Calendar, Package, MapPin, LogOut, Settings, Shield, CreditCard, Bell, Edit, Store, Loader2, CheckCircle, Clock
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { UserRole } from "@/types/auth";
@@ -16,12 +16,129 @@ import { SellerLayout } from "@/components/seller/SellerLayout";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { AddressesDialog } from "@/components/account/AddressesDialog";
 import { SettingsDialog } from "@/components/account/SettingsDialog";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
+import { useQuery } from "@tanstack/react-query";
 
 const AccountPage = () => {
   const { user, signOut, role } = useAuth();
   const isMobile = useIsMobile();
   const [showAddresses, setShowAddresses] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [isRequestingUpgrade, setIsRequestingUpgrade] = useState(false);
+
+  // Check if user already has a pending seller upgrade request
+  const { data: existingRequest, refetch: refetchRequest } = useQuery({
+    queryKey: ['seller-upgrade-request', user?.id],
+    queryFn: async () => {
+      if (!user?.id) return null;
+      const { data, error } = await supabase
+        .from('admin_approval_requests')
+        .select('*')
+        .eq('requester_id', user.id)
+        .eq('request_type', 'seller_upgrade' as any)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      
+      if (error) {
+        console.error('Error fetching upgrade request:', error);
+        return null;
+      }
+      return data;
+    },
+    enabled: !!user?.id && role === UserRole.CLIENT,
+  });
+
+  const handleRequestSellerUpgrade = async () => {
+    if (!user?.id) return;
+    
+    setIsRequestingUpgrade(true);
+    try {
+      // Check if there's already a pending request
+      if (existingRequest?.status === 'pending') {
+        toast.info('Ya tienes una solicitud pendiente de aprobación');
+        return;
+      }
+
+      // Create a new upgrade request
+      const { error } = await supabase
+        .from('admin_approval_requests')
+        .insert({
+          requester_id: user.id,
+          request_type: 'seller_upgrade' as any,
+          status: 'pending',
+          metadata: {
+            user_email: user.email,
+            user_name: user.name,
+            requested_at: new Date().toISOString(),
+          },
+        });
+
+      if (error) throw error;
+
+      toast.success('¡Solicitud enviada! Un administrador revisará tu solicitud pronto.');
+      refetchRequest();
+    } catch (error) {
+      console.error('Error requesting seller upgrade:', error);
+      toast.error('Error al enviar la solicitud. Intenta de nuevo.');
+    } finally {
+      setIsRequestingUpgrade(false);
+    }
+  };
+
+  const getUpgradeButtonContent = () => {
+    if (existingRequest?.status === 'pending') {
+      return (
+        <>
+          <Clock className="h-6 w-6" />
+          <div>
+            <h4 className="font-bold text-lg text-amber-700">Solicitud Pendiente</h4>
+            <p className="text-sm text-amber-600 mt-1">
+              Tu solicitud está siendo revisada por un administrador.
+            </p>
+          </div>
+        </>
+      );
+    }
+    if (existingRequest?.status === 'approved') {
+      return (
+        <>
+          <CheckCircle className="h-6 w-6" />
+          <div>
+            <h4 className="font-bold text-lg text-green-700">¡Aprobado!</h4>
+            <p className="text-sm text-green-600 mt-1">
+              Tu cuenta ha sido actualizada a vendedor.
+            </p>
+          </div>
+        </>
+      );
+    }
+    if (existingRequest?.status === 'rejected') {
+      return (
+        <>
+          <Store className="h-6 w-6" />
+          <div>
+            <h4 className="font-bold text-lg text-gray-900 group-hover:text-[#071d7f] transition-colors">Solicitar de Nuevo</h4>
+            <p className="text-sm text-gray-500 mt-1">
+              Tu solicitud anterior fue rechazada. Puedes intentar de nuevo.
+            </p>
+          </div>
+        </>
+      );
+    }
+    return (
+      <>
+        <Store className="h-6 w-6" />
+        <div>
+          <h4 className="font-bold text-lg text-gray-900 group-hover:text-[#071d7f] transition-colors">Quiero ser Vendedor</h4>
+          <p className="text-sm text-gray-500 mt-1">
+            Solicita acceso para vender en SIVER Market.
+          </p>
+        </div>
+      </>
+    );
+  };
 
   if (!user) {
     return (
@@ -182,6 +299,34 @@ const AccountPage = () => {
                             Preferencias de cuenta y seguridad.
                         </p>
                     </button>
+
+                    {/* Become a Seller Button - Only show for CLIENT role */}
+                    {role === UserRole.CLIENT && (
+                      <button 
+                        onClick={handleRequestSellerUpgrade}
+                        disabled={isRequestingUpgrade || existingRequest?.status === 'pending' || existingRequest?.status === 'approved'}
+                        className={`flex flex-col items-start p-6 bg-white rounded-xl shadow-md hover:shadow-xl border border-transparent transition-all duration-300 group text-left ${
+                          existingRequest?.status === 'pending' 
+                            ? 'bg-amber-50 border-amber-200 cursor-default' 
+                            : existingRequest?.status === 'approved'
+                            ? 'bg-green-50 border-green-200 cursor-default'
+                            : 'hover:border-indigo-100'
+                        }`}
+                      >
+                        <div className="flex items-center gap-4 w-full">
+                          <div className={`p-3 rounded-xl transition-colors shadow-sm ${
+                            existingRequest?.status === 'pending'
+                              ? 'bg-amber-100 text-amber-600'
+                              : existingRequest?.status === 'approved'
+                              ? 'bg-green-100 text-green-600'
+                              : 'bg-indigo-50 text-indigo-600 group-hover:bg-indigo-600 group-hover:text-white'
+                          }`}>
+                            {isRequestingUpgrade ? <Loader2 className="h-6 w-6 animate-spin" /> : getUpgradeButtonContent().props.children[0]}
+                          </div>
+                          {getUpgradeButtonContent().props.children[1]}
+                        </div>
+                      </button>
+                    )}
 
                     <button 
                         onClick={signOut}
