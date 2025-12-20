@@ -26,7 +26,7 @@ export function SellerSidebar() {
     icon: Package,
     badge: "Nuevo"
   }, {
-    title: "Pedidos Recibidos",
+    title: "Mis Ventas",
     url: "/seller/pedidos",
     icon: ClipboardList
   }, {

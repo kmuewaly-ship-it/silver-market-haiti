@@ -22,7 +22,12 @@ export interface SellerProduct {
     is_active: boolean;
   } | null;
   source_product: {
+    id: string;
     categoria_id: string | null;
+    precio_mayorista: number;
+    precio_sugerido_venta: number | null;
+    moq: number;
+    stock_fisico: number;
     category: {
       id: string;
       name: string;
@@ -49,7 +54,12 @@ export const useSellerProduct = (sku: string | undefined) => {
             is_active
           ),
           source_product:products!seller_catalog_source_product_id_fkey(
+            id,
             categoria_id,
+            precio_mayorista,
+            precio_sugerido_venta,
+            moq,
+            stock_fisico,
             category:categories!products_categoria_id_fkey(
               id,
               name,
@@ -88,7 +98,12 @@ export const useSellerProducts = (limit = 20) => {
             is_active
           ),
           source_product:products!seller_catalog_source_product_id_fkey(
+            id,
             categoria_id,
+            precio_mayorista,
+            precio_sugerido_venta,
+            moq,
+            stock_fisico,
             category:categories!products_categoria_id_fkey(
               id,
               name,
@@ -141,7 +156,12 @@ export const useSellerProductsByCategory = (categoryId: string | undefined, limi
             is_active
           ),
           source_product:products!seller_catalog_source_product_id_fkey(
+            id,
             categoria_id,
+            precio_mayorista,
+            precio_sugerido_venta,
+            moq,
+            stock_fisico,
             category:categories!products_categoria_id_fkey(
               id,
               name,

@@ -4,12 +4,15 @@ import GlobalHeader from "@/components/layout/GlobalHeader";
 import Footer from "@/components/layout/Footer";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent } from "@/components/ui/card";
 import { useAuth } from "@/hooks/useAuth";
 import { UserRole } from "@/types/auth";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useTrackProductView } from "@/hooks/useTrendingProducts";
 import { useSellerProduct, useSellerProducts } from "@/hooks/useSellerProducts";
 import { useCart } from "@/hooks/useCart";
+import { useSmartCart } from "@/hooks/useSmartCart";
 import { useToast } from "@/hooks/use-toast";
 import {
   Star,
@@ -26,6 +29,8 @@ import {
   Award,
   Store as StoreIcon,
   Package,
+  TrendingUp,
+  Calculator,
 } from "lucide-react";
 
 const ProductPage = () => {
@@ -35,14 +40,46 @@ const ProductPage = () => {
   const isMobile = useIsMobile();
   const { trackView } = useTrackProductView();
   const { addItem } = useCart();
+  const { addToCart, isB2BUser } = useSmartCart();
   const { toast } = useToast();
   
   const { data: product, isLoading } = useSellerProduct(sku);
   const { data: allProducts } = useSellerProducts(50);
   
   const [selectedImage, setSelectedImage] = useState(0);
-  const [quantity, setQuantity] = useState(1);
   const [viewTracked, setViewTracked] = useState(false);
+
+  // B2B fields from source product
+  const costB2B = product?.source_product?.precio_mayorista || product?.precio_costo || product?.precio_venta || 0;
+  const pvp = product?.source_product?.precio_sugerido_venta || product?.precio_venta || 0;
+  const moq = product?.source_product?.moq || 1;
+  const stockB2B = product?.source_product?.stock_fisico || product?.stock || 0;
+
+  // Cantidad inicial basada en rol
+  const [quantity, setQuantity] = useState(1);
+  
+  // Actualizar cantidad cuando se carga el producto
+  useEffect(() => {
+    if (product && isB2BUser) {
+      setQuantity(moq);
+    }
+  }, [product, isB2BUser, moq]);
+
+  // Mínimo permitido
+  const minQuantity = isB2BUser ? moq : 1;
+  const maxQuantity = isB2BUser ? stockB2B : (product?.stock || 1);
+
+  // Cálculos de negocio B2B
+  const businessSummary = useMemo(() => {
+    if (!isB2BUser || !product) return null;
+    return {
+      investment: quantity * costB2B,
+      estimatedRevenue: quantity * pvp,
+      estimatedProfit: quantity * (pvp - costB2B),
+      profitPerUnit: pvp - costB2B,
+      profitPercentage: costB2B > 0 ? Math.round(((pvp - costB2B) / costB2B) * 100) : 0,
+    };
+  }, [isB2BUser, product, quantity, costB2B, pvp]);
 
   // Parse images from product
   const getImages = (): string[] => {
@@ -83,23 +120,42 @@ const ProductPage = () => {
   const handleAddToCart = () => {
     if (!product) return;
     
-    for (let i = 0; i < quantity; i++) {
-      addItem({
-        id: product.id,
+    if (isB2BUser) {
+      // Use smart cart for B2B
+      addToCart({
+        id: product.source_product?.id || product.id,
         name: product.nombre,
-        price: product.precio_venta,
+        price: pvp,
+        priceB2B: costB2B,
+        pvp: pvp,
+        moq: moq,
+        stock: stockB2B,
         image: images[0] || '',
         sku: product.sku,
         storeId: product.store?.id,
         storeName: product.store?.name,
         storeWhatsapp: product.store?.whatsapp || undefined,
       });
+    } else {
+      // B2C cart
+      for (let i = 0; i < quantity; i++) {
+        addItem({
+          id: product.id,
+          name: product.nombre,
+          price: product.precio_venta,
+          image: images[0] || '',
+          sku: product.sku,
+          storeId: product.store?.id,
+          storeName: product.store?.name,
+          storeWhatsapp: product.store?.whatsapp || undefined,
+        });
+      }
+      
+      toast({
+        title: "Producto agregado",
+        description: `${product.nombre} (x${quantity}) se agregó al carrito`,
+      });
     }
-    
-    toast({
-      title: "Producto agregado",
-      description: `${product.nombre} (x${quantity}) se agregó al carrito`,
-    });
   };
 
   const handleAddRelatedToCart = (relatedProduct: typeof allProducts[0]) => {
@@ -121,6 +177,11 @@ const ProductPage = () => {
       title: "Añadido al carrito",
       description: relatedProduct.nombre,
     });
+  };
+
+  const handleQuantityChange = (newQty: number) => {
+    const validQty = Math.max(minQuantity, Math.min(maxQuantity, newQty));
+    setQuantity(validQty);
   };
 
   if (isLoading) {
@@ -157,6 +218,9 @@ const ProductPage = () => {
       </div>
     );
   }
+
+  // Precio a mostrar
+  const displayPrice = isB2BUser ? costB2B : product.precio_venta;
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -232,6 +296,14 @@ const ProductPage = () => {
               <button className="absolute top-4 right-4 bg-white/80 hover:bg-white rounded-full p-2 transition">
                 <Heart className="w-6 h-6 text-gray-600" />
               </button>
+
+              {/* B2B Badge */}
+              {isB2BUser && businessSummary && businessSummary.profitPerUnit > 0 && (
+                <Badge className="absolute top-4 left-4 bg-green-600 text-white gap-1 text-sm py-1">
+                  <TrendingUp className="h-4 w-4" />
+                  Ganancia: ${businessSummary.profitPerUnit.toFixed(2)}/u
+                </Badge>
+              )}
             </div>
 
             {/* Miniaturas */}
@@ -256,6 +328,11 @@ const ProductPage = () => {
           <div className="bg-white rounded-lg p-6">
             {/* Category & Store Badge */}
             <div className="flex flex-wrap gap-2 mb-3">
+              {isB2BUser && (
+                <Badge variant="outline" className="border-blue-600 text-blue-600">
+                  Compra B2B
+                </Badge>
+              )}
               {product.source_product?.category && (
                 <Link 
                   to={`/categoria/${product.source_product.category.slug}`}
@@ -283,16 +360,38 @@ const ProductPage = () => {
 
             {/* Precio */}
             <div className="bg-gradient-to-r from-blue-50 to-blue-100 rounded-lg p-4 mb-4">
-              <span className="text-4xl font-bold text-gray-900">
-                ${product.precio_venta.toFixed(2)}
-              </span>
+              <div className="flex items-baseline gap-2">
+                <span className="text-4xl font-bold text-gray-900">
+                  ${displayPrice.toFixed(2)}
+                </span>
+                {isB2BUser && (
+                  <span className="text-sm text-gray-600">costo mayorista</span>
+                )}
+              </div>
+              
+              {/* Precio de referencia para B2B */}
+              {isB2BUser && pvp > costB2B && (
+                <div className="mt-2 text-sm text-gray-600">
+                  PVP sugerido: <span className="font-semibold text-gray-800">${pvp.toFixed(2)}</span>
+                </div>
+              )}
             </div>
+
+            {/* MOQ Indicator para B2B */}
+            {isB2BUser && moq > 1 && (
+              <div className="flex items-center gap-2 mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                <Package className="w-5 h-5 text-amber-600" />
+                <span className="text-sm text-amber-800">
+                  <strong>Mínimo de compra:</strong> {moq} unidades
+                </span>
+              </div>
+            )}
 
             {/* Stock */}
             <div className="flex items-center gap-2 mb-6">
               <Zap className="w-5 h-5 text-orange-500" />
               <span className="text-sm text-gray-900">
-                <strong>{product.stock}</strong> unidades disponibles
+                <strong>{isB2BUser ? stockB2B : product.stock}</strong> unidades disponibles
               </span>
             </div>
 
@@ -301,35 +400,79 @@ const ProductPage = () => {
               <label className="block text-sm font-semibold text-gray-900 mb-2">Cantidad:</label>
               <div className="flex items-center border border-gray-300 rounded-lg w-fit">
                 <button
-                  onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                  className="px-4 py-2 text-gray-600 hover:bg-gray-100"
+                  onClick={() => handleQuantityChange(quantity - 1)}
+                  disabled={quantity <= minQuantity}
+                  className="px-4 py-2 text-gray-600 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   −
                 </button>
                 <input
                   type="number"
                   value={quantity}
-                  onChange={(e) => setQuantity(Math.max(1, Math.min(product.stock, parseInt(e.target.value) || 1)))}
+                  onChange={(e) => handleQuantityChange(parseInt(e.target.value) || minQuantity)}
                   className="w-16 text-center border-none outline-none"
+                  min={minQuantity}
+                  max={maxQuantity}
                 />
                 <button
-                  onClick={() => setQuantity(Math.min(product.stock, quantity + 1))}
-                  className="px-4 py-2 text-gray-600 hover:bg-gray-100"
+                  onClick={() => handleQuantityChange(quantity + 1)}
+                  disabled={quantity >= maxQuantity}
+                  className="px-4 py-2 text-gray-600 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   +
                 </button>
               </div>
+              {isB2BUser && (
+                <p className="text-xs text-gray-500 mt-1">
+                  Cantidad mínima: {minQuantity} unidades
+                </p>
+              )}
             </div>
+
+            {/* Resumen de Negocio B2B */}
+            {isB2BUser && businessSummary && (
+              <Card className="mb-6 border-green-200 bg-green-50">
+                <CardContent className="p-4">
+                  <div className="flex items-center gap-2 mb-3">
+                    <Calculator className="w-5 h-5 text-green-700" />
+                    <h3 className="font-semibold text-green-800">Resumen de Negocio</h3>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-xs text-green-700">Inversión Total</p>
+                      <p className="text-xl font-bold text-gray-900">${businessSummary.investment.toFixed(2)}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-green-700">Utilidad Estimada</p>
+                      <p className="text-xl font-bold text-green-600">+${businessSummary.estimatedProfit.toFixed(2)}</p>
+                    </div>
+                  </div>
+                  <div className="mt-3 pt-3 border-t border-green-200 flex justify-between text-sm">
+                    <span className="text-green-700">Venta estimada (PVP):</span>
+                    <span className="font-semibold text-gray-900">${businessSummary.estimatedRevenue.toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-green-700">Margen de ganancia:</span>
+                    <span className="font-semibold text-green-600">{businessSummary.profitPercentage}%</span>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
 
             {/* Botones de Acción */}
             <div className="space-y-3 mb-6">
               <Button 
                 onClick={handleAddToCart}
                 className="w-full bg-blue-600 hover:bg-blue-700 text-white py-6 text-lg font-bold"
-                disabled={product.stock === 0}
+                disabled={(isB2BUser ? stockB2B : product.stock) === 0}
               >
                 <ShoppingCart className="w-5 h-5 mr-2" />
-                {product.stock === 0 ? 'Sin Stock' : 'Agregar al Carrito'}
+                {(isB2BUser ? stockB2B : product.stock) === 0 
+                  ? 'Sin Stock' 
+                  : isB2BUser 
+                    ? `Comprar B2B (×${quantity})`
+                    : 'Agregar al Carrito'
+                }
               </Button>
               <Button
                 variant="outline"
