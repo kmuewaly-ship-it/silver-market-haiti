@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { usePublicCategories } from "@/hooks/useCategories";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
-import { useB2BCartSupabase } from "@/hooks/useB2BCartSupabase";
+import { useCartB2B } from "@/hooks/useCartB2B";
 import { searchProductsByImage } from "@/services/api/imageSearch";
 import { toast } from "sonner";
 import { useViewMode } from "@/contexts/ViewModeContext";
@@ -96,7 +96,7 @@ const HeaderB2B = ({
   const recognitionRef = useRef<SpeechRecognition | null>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const searchContainerRef = useRef<HTMLDivElement>(null);
-  const { cart } = useB2BCartSupabase();
+  const { cart } = useCartB2B();
   const cartCount = cart.totalItems;
 
   const { data: categories = [], isLoading: categoriesLoading } = usePublicCategories();
