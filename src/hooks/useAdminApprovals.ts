@@ -2,7 +2,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
-export type ApprovalRequestType = 'kyc_verification' | 'referral_bonus' | 'credit_limit_increase' | 'credit_activation';
+export type ApprovalRequestType = 'kyc_verification' | 'referral_bonus' | 'credit_limit_increase' | 'credit_activation' | 'seller_upgrade';
 export type ApprovalStatus = 'pending' | 'approved' | 'rejected';
 
 export interface ApprovalRequest {
@@ -106,6 +106,7 @@ export const useAdminApprovals = () => {
         kycPending: kycPending?.length ?? 0,
         bonusPending: pending?.filter(p => p.request_type === 'referral_bonus').length ?? 0,
         creditPending: pending?.filter(p => p.request_type === 'credit_limit_increase' || p.request_type === 'credit_activation').length ?? 0,
+        sellerUpgradePending: pending?.filter(p => p.request_type === 'seller_upgrade').length ?? 0,
         totalDebt: totalDebt?.reduce((sum, c) => sum + Number(c.balance_debt), 0) ?? 0,
       };
     },
@@ -176,6 +177,74 @@ export const useAdminApprovals = () => {
           .from('seller_credits')
           .update({ credit_limit: metadata?.new_limit ?? 0 })
           .eq('user_id', request.requester_id);
+      }
+
+      // Handle seller upgrade approval
+      if (request.request_type === 'seller_upgrade') {
+        const metadata = request.metadata as Record<string, string>;
+        
+        // 1. Delete existing 'user' role (if exists)
+        await supabase
+          .from('user_roles')
+          .delete()
+          .eq('user_id', request.requester_id)
+          .eq('role', 'user');
+        
+        // 2. Assign 'seller' role
+        const { error: roleError } = await supabase
+          .from('user_roles')
+          .insert({
+            user_id: request.requester_id,
+            role: 'seller',
+          });
+        
+        if (roleError && !roleError.message.includes('duplicate')) {
+          throw roleError;
+        }
+        
+        // 3. Create seller record if not exists
+        const { data: existingSeller } = await supabase
+          .from('sellers')
+          .select('id')
+          .eq('user_id', request.requester_id)
+          .maybeSingle();
+        
+        if (!existingSeller) {
+          await supabase.from('sellers').insert({
+            user_id: request.requester_id,
+            email: metadata?.user_email || '',
+            name: metadata?.store_name || metadata?.user_name || 'Vendedor',
+            business_name: metadata?.store_name || null,
+            phone: metadata?.phone || null,
+            is_verified: false,
+          });
+        }
+        
+        // 4. Create store if metadata has store info and store doesn't exist
+        if (metadata?.store_name) {
+          const { data: existingStore } = await supabase
+            .from('stores')
+            .select('id')
+            .eq('owner_user_id', request.requester_id)
+            .maybeSingle();
+          
+          if (!existingStore) {
+            const slug = (metadata.store_name as string)
+              .toLowerCase()
+              .normalize("NFD")
+              .replace(/[\u0300-\u036f]/g, "")
+              .replace(/[^a-z0-9]+/g, "-")
+              .replace(/(^-|-$)/g, "") + "-" + Math.floor(Math.random() * 1000);
+            
+            await supabase.from('stores').insert({
+              owner_user_id: request.requester_id,
+              name: metadata.store_name,
+              description: metadata.store_description || null,
+              slug: slug,
+              is_active: true,
+            });
+          }
+        }
       }
 
       // Update request status
