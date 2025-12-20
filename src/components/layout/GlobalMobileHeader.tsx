@@ -25,25 +25,21 @@ interface SpeechRecognitionEvent extends Event {
   results: SpeechRecognitionResultList;
   resultIndex: number;
 }
-
 interface SpeechRecognitionResultList {
   length: number;
   item(index: number): SpeechRecognitionResult;
   [index: number]: SpeechRecognitionResult;
 }
-
 interface SpeechRecognitionResult {
   length: number;
   item(index: number): SpeechRecognitionAlternative;
   [index: number]: SpeechRecognitionAlternative;
   isFinal: boolean;
 }
-
 interface SpeechRecognitionAlternative {
   transcript: string;
   confidence: number;
 }
-
 interface SpeechRecognition extends EventTarget {
   continuous: boolean;
   interimResults: boolean;
@@ -52,23 +48,24 @@ interface SpeechRecognition extends EventTarget {
   stop(): void;
   abort(): void;
   onresult: ((event: SpeechRecognitionEvent) => void) | null;
-  onerror: ((event: Event & { error: string }) => void) | null;
+  onerror: ((event: Event & {
+    error: string;
+  }) => void) | null;
   onend: (() => void) | null;
   onstart: (() => void) | null;
 }
-
 declare global {
   interface Window {
     SpeechRecognition: new () => SpeechRecognition;
     webkitSpeechRecognition: new () => SpeechRecognition;
   }
 }
-
 interface GlobalMobileHeaderProps {
   forceShow?: boolean;
 }
-
-const GlobalMobileHeader = ({ forceShow = false }: GlobalMobileHeaderProps) => {
+const GlobalMobileHeader = ({
+  forceShow = false
+}: GlobalMobileHeaderProps) => {
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const [isSearching, setIsSearching] = useState(false);
@@ -84,20 +81,32 @@ const GlobalMobileHeader = ({ forceShow = false }: GlobalMobileHeaderProps) => {
   const navigate = useNavigate();
   const location = useLocation();
   const isMobile = useIsMobile();
-  const { data: categories = [] } = usePublicCategories();
-  const { totalItems } = useCart();
-  const { cart: cartB2B } = useCartB2B();
-  const { role } = useAuth();
-  const { isClientPreview, toggleViewMode, canToggle } = useViewMode();
-  
+  const {
+    data: categories = []
+  } = usePublicCategories();
+  const {
+    totalItems
+  } = useCart();
+  const {
+    cart: cartB2B
+  } = useCartB2B();
+  const {
+    role
+  } = useAuth();
+  const {
+    isClientPreview,
+    toggleViewMode,
+    canToggle
+  } = useViewMode();
+
   // Determinar si es seller/admin para mostrar header B2B
   const isSellerOrAdmin = role === UserRole.SELLER || role === UserRole.ADMIN;
-  
+
   // Cuando está en modo preview cliente, usar carrito B2C y estilo de cliente
   const showAsClient = isSellerOrAdmin && isClientPreview;
-  
+
   // Usar carrito B2B para seller/admin en modo B2B, B2C para clientes o preview
-  const cartCount = (isSellerOrAdmin && !isClientPreview) ? cartB2B.totalItems : totalItems();
+  const cartCount = isSellerOrAdmin && !isClientPreview ? cartB2B.totalItems : totalItems();
 
   // Bounce animation when cart count increases
   useEffect(() => {
@@ -149,16 +158,12 @@ const GlobalMobileHeader = ({ forceShow = false }: GlobalMobileHeaderProps) => {
         setShowResults(false);
         return;
       }
-
       setIsSearching(true);
       try {
-        const { data, error } = await supabase
-          .from("products")
-          .select("id, nombre, sku_interno, imagen_principal, precio_mayorista")
-          .eq("is_active", true)
-          .or(`nombre.ilike.%${searchQuery}%,sku_interno.ilike.%${searchQuery}%`)
-          .limit(8);
-
+        const {
+          data,
+          error
+        } = await supabase.from("products").select("id, nombre, sku_interno, imagen_principal, precio_mayorista").eq("is_active", true).or(`nombre.ilike.%${searchQuery}%,sku_interno.ilike.%${searchQuery}%`).limit(8);
         if (error) throw error;
         setSearchResults(data || []);
         setShowResults(true);
@@ -169,7 +174,6 @@ const GlobalMobileHeader = ({ forceShow = false }: GlobalMobileHeaderProps) => {
         setIsSearching(false);
       }
     };
-
     const debounce = setTimeout(searchProducts, 300);
     return () => clearTimeout(debounce);
   }, [searchQuery]);
@@ -181,25 +185,18 @@ const GlobalMobileHeader = ({ forceShow = false }: GlobalMobileHeaderProps) => {
   }
 
   // Get root categories (no parent)
-  const rootCategories = categories.filter((c) => !c.parent_id);
+  const rootCategories = categories.filter(c => !c.parent_id);
 
   // Determine selected category from route
   const isCategoriesPage = location.pathname === '/categorias';
-  const categorySlug = location.pathname.startsWith('/categoria/') 
-    ? location.pathname.split('/categoria/')[1] 
-    : null;
-  
-  const selectedCategory = categorySlug 
-    ? categories.find(c => c.slug === categorySlug)?.id || null
-    : null;
-
+  const categorySlug = location.pathname.startsWith('/categoria/') ? location.pathname.split('/categoria/')[1] : null;
+  const selectedCategory = categorySlug ? categories.find(c => c.slug === categorySlug)?.id || null : null;
   const handleCategorySelect = (categoryId: string) => {
     const category = categories.find(c => c.id === categoryId);
     if (category) {
       navigate(`/categoria/${category.slug}`);
     }
   };
-
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     if (searchQuery.trim()) {
@@ -207,22 +204,18 @@ const GlobalMobileHeader = ({ forceShow = false }: GlobalMobileHeaderProps) => {
       navigate(`/productos?q=${encodeURIComponent(searchQuery.trim())}`);
     }
   };
-
   const handleResultClick = (sku: string) => {
     setShowResults(false);
     setSearchQuery("");
     navigate(`/producto/${sku}`);
   };
-
   const clearSearch = () => {
     setSearchQuery("");
     setSearchResults([]);
     setShowResults(false);
   };
-
   const startVoiceSearch = () => {
     const SpeechRecognitionAPI = window.SpeechRecognition || window.webkitSpeechRecognition;
-    
     if (!SpeechRecognitionAPI) {
       toast.error("Búsqueda por voz no soportada en este navegador");
       return;
@@ -233,7 +226,6 @@ const GlobalMobileHeader = ({ forceShow = false }: GlobalMobileHeaderProps) => {
       recognitionRef.current.stop();
       return;
     }
-
     const recognition = new SpeechRecognitionAPI();
     recognition.continuous = false;
     recognition.interimResults = true;
@@ -241,13 +233,13 @@ const GlobalMobileHeader = ({ forceShow = false }: GlobalMobileHeaderProps) => {
 
     recognition.onstart = () => {
       setIsListening(true);
-      toast.info("Escuchando...", { duration: 2000 });
+      toast.info("Escuchando...", {
+        duration: 2000
+      });
     };
-
     recognition.onresult = (event: SpeechRecognitionEvent) => {
       let finalTranscript = '';
       let interimTranscript = '';
-
       for (let i = event.resultIndex; i < event.results.length; i++) {
         const transcript = event.results[i][0].transcript;
         if (event.results[i].isFinal) {
@@ -269,11 +261,9 @@ const GlobalMobileHeader = ({ forceShow = false }: GlobalMobileHeaderProps) => {
         navigate(`/productos?q=${encodeURIComponent(finalTranscript.trim())}`);
       }
     };
-
-    recognition.onerror = (event) => {
+    recognition.onerror = event => {
       console.error("Speech recognition error:", event.error);
       setIsListening(false);
-      
       if (event.error === 'no-speech') {
         toast.error("No se detectó ninguna voz. Intenta de nuevo.");
       } else if (event.error === 'audio-capture') {
@@ -284,22 +274,17 @@ const GlobalMobileHeader = ({ forceShow = false }: GlobalMobileHeaderProps) => {
         toast.error("Error al reconocer voz. Intenta de nuevo.");
       }
     };
-
     recognition.onend = () => {
       setIsListening(false);
     };
-
     recognitionRef.current = recognition;
     recognition.start();
   };
-
   const handleImageSearch = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-
     setIsImageSearching(true);
     toast.info("Cargando modelo de IA... Esto puede tomar unos segundos la primera vez.");
-
     try {
       const results = await searchProductsByImage(file);
       if (results && results.length > 0) {
@@ -326,14 +311,11 @@ const GlobalMobileHeader = ({ forceShow = false }: GlobalMobileHeaderProps) => {
   const cartLink = showB2BStyle ? "/seller/carrito" : "/carrito";
   const accentColor = showB2BStyle ? "bg-blue-600" : "bg-red-500";
   const buttonColor = showB2BStyle ? "bg-blue-600 hover:bg-blue-700" : "bg-gray-900 hover:bg-gray-800";
-
-  return (
-    <header className="bg-white sticky top-0 z-40">
+  return <header className="bg-white sticky top-0 z-40">
       {/* Top search bar */}
       <div className="flex items-center gap-3 px-3 py-2.5">
         {/* Logo/Icon - cambia según el modo */}
-        {showB2BStyle ? (
-          <div className="flex items-center gap-1 flex-shrink-0">
+        {showB2BStyle ? <div className="flex items-center gap-1 flex-shrink-0">
             <Link to="/seller/adquisicion-lotes" className="flex items-center gap-1">
               <div className="w-8 h-8 rounded bg-blue-600 flex items-center justify-center">
                 <Package className="w-4 h-4 text-white" />
@@ -341,19 +323,11 @@ const GlobalMobileHeader = ({ forceShow = false }: GlobalMobileHeaderProps) => {
               <span className="font-bold text-xs text-gray-900">B2B</span>
             </Link>
             {/* Switch de vista */}
-            {canToggle && (
-              <button
-                onClick={toggleViewMode}
-                className="ml-1 p-1 rounded-full bg-amber-100 text-amber-600"
-                title="Ver como cliente"
-              >
+            {canToggle && <button onClick={toggleViewMode} className="ml-1 p-1 rounded-full bg-amber-100 text-amber-600" title="Ver como cliente">
                 <Eye className="w-4 h-4" />
-              </button>
-            )}
-          </div>
-        ) : isSellerOrAdmin && showAsClient ? (
-          /* Modo preview cliente para seller */
-          <div className="flex items-center gap-1 flex-shrink-0">
+              </button>}
+          </div> : isSellerOrAdmin && showAsClient ? (/* Modo preview cliente para seller */
+      <div className="flex items-center gap-1 flex-shrink-0">
             <button className="relative">
               <Mail className="w-6 h-6 text-gray-700" strokeWidth={1.5} />
               <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center px-1">
@@ -361,113 +335,46 @@ const GlobalMobileHeader = ({ forceShow = false }: GlobalMobileHeaderProps) => {
               </span>
             </button>
             {/* Switch para volver a B2B */}
-            {canToggle && (
-              <button
-                onClick={toggleViewMode}
-                className="ml-1 p-1 rounded-full bg-amber-100 text-amber-600"
-                title="Volver a vista B2B"
-              >
+            {canToggle && <button onClick={toggleViewMode} className="ml-1 p-1 rounded-full bg-amber-100 text-amber-600" title="Volver a vista B2B">
                 <EyeOff className="w-4 h-4" />
-              </button>
-            )}
-          </div>
-        ) : (
-          /* Cliente normal */
-          <button className="relative flex-shrink-0">
+              </button>}
+          </div>) : (/* Cliente normal */
+      <button className="relative flex-shrink-0">
             <Mail className="w-6 h-6 text-gray-700" strokeWidth={1.5} />
             <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center px-1">
               5
             </span>
-          </button>
-        )}
+          </button>)}
 
         {/* Search input with dropdown */}
         <div ref={searchRef} className="flex-1 max-w-[60%] relative">
           <form onSubmit={handleSearch} className="flex items-center bg-gray-100 rounded-full border border-gray-200 overflow-hidden">
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              onFocus={() => searchQuery.length >= 2 && setShowResults(true)}
-              className="flex-1 bg-transparent text-sm text-gray-700 px-3 py-2 outline-none min-w-0"
-            />
-            {searchQuery && (
-              <button type="button" onClick={clearSearch} className="p-1 text-gray-400 hover:text-gray-600">
+            <input type="text" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} onFocus={() => searchQuery.length >= 2 && setShowResults(true)} className="flex-1 bg-transparent text-sm text-gray-700 px-3 py-2 outline-none min-w-0" />
+            {searchQuery && <button type="button" onClick={clearSearch} className="p-1 text-gray-400 hover:text-gray-600">
                 <X className="w-4 h-4" />
-              </button>
-            )}
+              </button>}
             {/* Camera/Image search button */}
-            <input
-              ref={imageInputRef}
-              type="file"
-              accept="image/*"
-              capture="environment"
-              className="hidden"
-              onChange={handleImageSearch}
-            />
-            <button
-              type="button"
-              onClick={() => imageInputRef.current?.click()}
-              disabled={isImageSearching}
-              className="p-1 text-gray-500 hover:text-gray-700 transition-colors disabled:opacity-50"
-            >
-              {isImageSearching ? (
-                <Loader2 className="w-5 h-5 animate-spin" strokeWidth={1.5} />
-              ) : (
-                <Camera className="w-5 h-5" strokeWidth={1.5} />
-              )}
+            <input ref={imageInputRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={handleImageSearch} />
+            <button type="button" onClick={() => imageInputRef.current?.click()} disabled={isImageSearching} className="p-1 text-gray-500 hover:text-gray-700 transition-colors disabled:opacity-50">
+              {isImageSearching ? <Loader2 className="w-5 h-5 animate-spin" strokeWidth={1.5} /> : <Camera className="w-5 h-5" strokeWidth={1.5} />}
             </button>
             {/* Voice search button */}
-            {voiceSupported && (
-              <button 
-                type="button" 
-                onClick={startVoiceSearch}
-                className={cn(
-                  "p-2 transition-colors",
-                  isListening 
-                    ? "text-red-500 animate-pulse" 
-                    : "text-gray-500 hover:text-gray-700"
-                )}
-              >
-                {isListening ? (
-                  <MicOff className="w-5 h-5" strokeWidth={1.5} />
-                ) : (
-                  <Mic className="w-5 h-5" strokeWidth={1.5} />
-                )}
-              </button>
-            )}
+            {voiceSupported && <button type="button" onClick={startVoiceSearch} className={cn("p-2 transition-colors", isListening ? "text-red-500 animate-pulse" : "text-gray-500 hover:text-gray-700")}>
+                {isListening ? <MicOff className="w-5 h-5" strokeWidth={1.5} /> : <Mic className="w-5 h-5" strokeWidth={1.5} />}
+              </button>}
             <button type="submit" className={cn(buttonColor, "p-2 rounded-full m-0.5 transition-colors")}>
-              {isSearching ? (
-                <Loader2 className="w-4 h-4 text-white animate-spin" />
-              ) : (
-                <Search className="w-4 h-4 text-white" strokeWidth={2} />
-              )}
+              {isSearching ? <Loader2 className="w-4 h-4 text-white animate-spin" /> : <Search className="w-4 h-4 text-white" strokeWidth={2} />}
             </button>
           </form>
 
           {/* Search results dropdown */}
-          {showResults && (
-            <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-lg shadow-lg border border-gray-200 max-h-80 overflow-y-auto z-50">
-              {searchResults.length > 0 ? (
-                <>
-                  {searchResults.map((product) => (
-                    <button
-                      key={product.id}
-                      onClick={() => handleResultClick(product.sku_interno)}
-                      className="w-full flex items-center gap-3 p-3 hover:bg-gray-50 transition-colors border-b border-gray-100 last:border-b-0"
-                    >
+          {showResults && <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-lg shadow-lg border border-gray-200 max-h-80 overflow-y-auto z-50">
+              {searchResults.length > 0 ? <>
+                  {searchResults.map(product => <button key={product.id} onClick={() => handleResultClick(product.sku_interno)} className="w-full flex items-center gap-3 p-3 hover:bg-gray-50 transition-colors border-b border-gray-100 last:border-b-0">
                       <div className="w-12 h-12 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0">
-                        {product.imagen_principal ? (
-                          <img
-                            src={product.imagen_principal}
-                            alt={product.nombre}
-                            className="w-full h-full object-cover"
-                          />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center text-gray-400 text-xs">
+                        {product.imagen_principal ? <img src={product.imagen_principal} alt={product.nombre} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-gray-400 text-xs">
                             Sin img
-                          </div>
-                        )}
+                          </div>}
                       </div>
                       <div className="flex-1 text-left">
                         <p className="text-sm font-medium text-gray-900 line-clamp-1">{product.nombre}</p>
@@ -476,25 +383,14 @@ const GlobalMobileHeader = ({ forceShow = false }: GlobalMobileHeaderProps) => {
                           ${product.precio_mayorista.toFixed(2)}
                         </p>
                       </div>
-                    </button>
-                  ))}
-                  <button
-                    onClick={handleSearch}
-                    className={cn(
-                      "w-full p-3 text-center text-sm font-medium transition-colors",
-                      isSellerOrAdmin ? "text-blue-600 hover:bg-blue-50" : "text-blue-600 hover:bg-blue-50"
-                    )}
-                  >
+                    </button>)}
+                  <button onClick={handleSearch} className={cn("w-full p-3 text-center text-sm font-medium transition-colors", isSellerOrAdmin ? "text-blue-600 hover:bg-blue-50" : "text-blue-600 hover:bg-blue-50")}>
                     Ver todos los resultados para "{searchQuery}"
                   </button>
-                </>
-              ) : (
-                <div className="p-4 text-center text-gray-500 text-sm">
+                </> : <div className="p-4 text-center text-gray-500 text-sm">
                   No se encontraron productos para "{searchQuery}"
-                </div>
-              )}
-            </div>
-          )}
+                </div>}
+            </div>}
         </div>
 
         {/* Favorites heart */}
@@ -506,53 +402,14 @@ const GlobalMobileHeader = ({ forceShow = false }: GlobalMobileHeaderProps) => {
         {/* Cart */}
         <Link to={cartLink} className="relative flex-shrink-0">
           <ShoppingBag className="w-6 h-6 text-gray-700" strokeWidth={1.5} />
-          {cartCount > 0 && (
-            <span className={cn(
-              "absolute -top-1 -right-1 min-w-[18px] h-[18px] text-white text-[10px] font-bold rounded-full flex items-center justify-center px-1",
-              accentColor,
-              cartBounce && "animate-cart-shake"
-            )}>
+          {cartCount > 0 && <span className={cn("absolute -top-1 -right-1 min-w-[18px] h-[18px] text-white text-[10px] font-bold rounded-full flex items-center justify-center px-1", accentColor, cartBounce && "animate-cart-shake")}>
               {cartCount > 99 ? '99+' : cartCount}
-            </span>
-          )}
+            </span>}
         </Link>
       </div>
 
       {/* Category tabs - horizontal scroll with dynamic background */}
-      <div className={cn(
-        "flex items-center gap-4 px-3 py-2.5 overflow-x-auto scrollbar-hide",
-        showB2BStyle ? "bg-gray-900" : "bg-black"
-      )}>
-        {/* "All" tab */}
-        <button
-          onClick={() => navigate(showB2BStyle ? "/seller/adquisicion-lotes" : "/categorias")}
-          className={cn(
-            "text-sm font-medium whitespace-nowrap pb-0.5 transition-colors",
-            isCategoriesPage && !selectedCategory
-              ? "text-white border-b-2 border-white" 
-              : "text-gray-400 hover:text-white"
-          )}
-        >
-          {showB2BStyle ? "Todos" : "All"}
-        </button>
-
-        {rootCategories.map((category) => (
-          <button
-            key={category.id}
-            onClick={() => handleCategorySelect(category.id)}
-            className={cn(
-              "text-sm font-medium whitespace-nowrap pb-0.5 transition-colors",
-              selectedCategory === category.id 
-                ? "text-white border-b-2 border-white" 
-                : "text-gray-400 hover:text-white"
-            )}
-          >
-            {category.name}
-          </button>
-        ))}
-      </div>
-    </header>
-  );
+      
+    </header>;
 };
-
 export default GlobalMobileHeader;
