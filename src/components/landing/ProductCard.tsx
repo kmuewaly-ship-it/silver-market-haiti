@@ -1,7 +1,8 @@
-import { Heart, Package, Store } from "lucide-react";
+import { Heart, Package, Store, TrendingUp } from "lucide-react";
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useSmartCart } from "@/hooks/useSmartCart";
+import { Badge } from "@/components/ui/badge";
 
 interface Product {
   id: string;
@@ -17,6 +18,7 @@ interface Product {
   storeWhatsapp?: string;
   // B2B fields
   priceB2B?: number;
+  pvp?: number; // Precio sugerido de venta
   moq?: number;
   stock?: number;
 }
@@ -29,9 +31,19 @@ const ProductCard = ({ product }: ProductCardProps) => {
   const [isFavorite, setIsFavorite] = useState(false);
   const { addToCart, isB2BUser } = useSmartCart();
 
+  // Calcular precios según el contexto
+  const costB2B = product.priceB2B || product.price;
+  const pvp = product.pvp || product.originalPrice || product.price;
+  const profit = pvp - costB2B;
+  const profitPercentage = costB2B > 0 ? Math.round((profit / costB2B) * 100) : 0;
+
   const discountPercentage = product.originalPrice
     ? Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100)
     : product.discount || 0;
+
+  // Precio a mostrar según rol
+  const displayPrice = isB2BUser ? costB2B : product.price;
+  const referencePrice = isB2BUser ? pvp : product.originalPrice;
 
   const handleAddToCart = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -41,7 +53,8 @@ const ProductCard = ({ product }: ProductCardProps) => {
       id: product.id,
       name: product.name,
       price: product.price,
-      priceB2B: product.priceB2B || product.price,
+      priceB2B: costB2B,
+      pvp: pvp,
       moq: product.moq || 1,
       stock: product.stock,
       image: product.image,
@@ -69,11 +82,19 @@ const ProductCard = ({ product }: ProductCardProps) => {
             </div>
           )}
 
-          {/* Discount Badge */}
-          {discountPercentage > 0 && (
+          {/* Discount Badge - Solo para B2C */}
+          {!isB2BUser && discountPercentage > 0 && (
             <div className="absolute top-2 left-2 bg-destructive text-destructive-foreground px-2 py-1 rounded text-xs font-bold">
               {discountPercentage}% DESC
             </div>
+          )}
+
+          {/* B2B Profitability Badge */}
+          {isB2BUser && profit > 0 && (
+            <Badge className="absolute top-2 left-2 bg-green-600 text-white gap-1">
+              <TrendingUp className="h-3 w-3" />
+              +${profit.toFixed(2)} ({profitPercentage}%)
+            </Badge>
           )}
 
           {/* Custom Badge */}
@@ -118,12 +139,29 @@ const ProductCard = ({ product }: ProductCardProps) => {
         </Link>
 
         <div className="space-y-1">
+          {/* Precio principal */}
           <div className="text-lg font-bold text-primary">
-            ${product.price.toFixed(2)}
+            ${displayPrice.toFixed(2)}
+            {isB2BUser && (
+              <span className="text-xs font-normal text-muted-foreground ml-1">costo</span>
+            )}
           </div>
-          {product.originalPrice && (
-            <div className="text-sm text-muted-foreground line-through">
-              ${product.originalPrice.toFixed(2)}
+          
+          {/* Precio de referencia */}
+          {referencePrice && referencePrice > displayPrice && (
+            <div className="text-sm text-muted-foreground">
+              {isB2BUser ? (
+                <span>PVP sugerido: ${referencePrice.toFixed(2)}</span>
+              ) : (
+                <span className="line-through">${referencePrice.toFixed(2)}</span>
+              )}
+            </div>
+          )}
+
+          {/* MOQ indicator para B2B */}
+          {isB2BUser && product.moq && product.moq > 1 && (
+            <div className="text-xs text-amber-600 font-medium">
+              Mínimo: {product.moq} unidades
             </div>
           )}
         </div>
@@ -132,7 +170,7 @@ const ProductCard = ({ product }: ProductCardProps) => {
           onClick={handleAddToCart}
           className="w-full mt-3 bg-primary hover:bg-primary/90 text-primary-foreground py-2 rounded-lg text-sm font-medium transition"
         >
-          {isB2BUser ? `Agregar (MOQ: ${product.moq || 1})` : "Agregar al Carrito"}
+          {isB2BUser ? `Comprar B2B (×${product.moq || 1})` : "Agregar al Carrito"}
         </button>
       </div>
     </div>

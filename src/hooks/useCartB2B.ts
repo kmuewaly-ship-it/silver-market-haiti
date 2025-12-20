@@ -56,14 +56,20 @@ export const useCartB2B = () => {
 
   const updateQuantity = useCallback((productId: string, cantidad: number) => {
     setCart((prevCart) => {
-      const updatedItems = prevCart.items.map((item) =>
-        item.productId === productId
+      const item = prevCart.items.find((i) => i.productId === productId);
+      if (!item) return prevCart;
+      
+      // Validar que no baje del MOQ
+      const validCantidad = Math.max(cantidad, item.moq);
+      
+      const updatedItems = prevCart.items.map((i) =>
+        i.productId === productId
           ? {
-              ...item,
-              cantidad,
-              subtotal: cantidad * item.precio_b2b,
+              ...i,
+              cantidad: validCantidad,
+              subtotal: validCantidad * i.precio_b2b,
             }
-          : item
+          : i
       );
       saveCart(updatedItems);
       return { ...prevCart, items: updatedItems };

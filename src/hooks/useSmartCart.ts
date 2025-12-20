@@ -16,6 +16,7 @@ interface ProductForCart {
   name: string;
   price: number; // B2C price
   priceB2B?: number; // B2B/wholesale price
+  pvp?: number; // Precio venta sugerido
   moq?: number; // Minimum order quantity
   stock?: number;
   image: string;
@@ -23,6 +24,14 @@ interface ProductForCart {
   storeId?: string;
   storeName?: string;
   storeWhatsapp?: string;
+}
+
+interface BusinessSummary {
+  investment: number;
+  estimatedRevenue: number;
+  estimatedProfit: number;
+  profitPerUnit: number;
+  profitPercentage: number;
 }
 
 export const useSmartCart = () => {
@@ -102,9 +111,30 @@ export const useSmartCart = () => {
     }
   };
 
+  /**
+   * Calculate business summary for B2B purchases
+   */
+  const getBusinessSummary = (
+    costB2B: number,
+    pvp: number,
+    quantity: number
+  ): BusinessSummary => {
+    const profitPerUnit = pvp - costB2B;
+    const profitPercentage = costB2B > 0 ? Math.round((profitPerUnit / costB2B) * 100) : 0;
+
+    return {
+      investment: quantity * costB2B,
+      estimatedRevenue: quantity * pvp,
+      estimatedProfit: quantity * profitPerUnit,
+      profitPerUnit,
+      profitPercentage,
+    };
+  };
+
   return {
     addToCart,
     getCartInfo,
+    getBusinessSummary,
     isB2BUser,
     // Expose underlying carts for direct access when needed
     b2cCart,
