@@ -31,7 +31,88 @@ import {
   Zap,
   Info
 } from "lucide-react";
-import { useSellerProduct } from "@/hooks/useSellerProducts";
+
+// Hook to fetch product from both seller_catalog and products table
+const useProductBySku = (sku: string | undefined) => {
+  return useQuery({
+    queryKey: ["product-by-sku", sku],
+    queryFn: async () => {
+      if (!sku) return null;
+
+      // First try to find in seller_catalog (B2C)
+      const { data: sellerProduct, error: sellerError } = await supabase
+        .from("seller_catalog")
+        .select(`
+          *,
+          store:stores!seller_catalog_seller_store_id_fkey(
+            id, name, logo, whatsapp, is_active
+          ),
+          source_product:products!seller_catalog_source_product_id_fkey(
+            id, categoria_id, precio_mayorista, precio_sugerido_venta, moq, stock_fisico, galeria_imagenes,
+            category:categories!products_categoria_id_fkey(id, name, slug)
+          )
+        `)
+        .eq("sku", sku)
+        .eq("is_active", true)
+        .maybeSingle();
+
+      if (sellerProduct) {
+        return {
+          type: 'seller_catalog' as const,
+          id: sellerProduct.id,
+          sku: sellerProduct.sku,
+          nombre: sellerProduct.nombre,
+          descripcion: sellerProduct.descripcion,
+          precio_venta: sellerProduct.precio_venta,
+          precio_costo: sellerProduct.precio_costo,
+          stock: sellerProduct.stock,
+          images: sellerProduct.images || sellerProduct.source_product?.galeria_imagenes || [],
+          store: sellerProduct.store,
+          source_product: sellerProduct.source_product,
+        };
+      }
+
+      // If not found in seller_catalog, try products table (B2B)
+      const { data: b2bProduct, error: b2bError } = await supabase
+        .from("products")
+        .select(`
+          *,
+          category:categories!products_categoria_id_fkey(id, name, slug)
+        `)
+        .eq("sku_interno", sku)
+        .eq("is_active", true)
+        .maybeSingle();
+
+      if (b2bProduct) {
+        return {
+          type: 'products' as const,
+          id: b2bProduct.id,
+          sku: b2bProduct.sku_interno,
+          nombre: b2bProduct.nombre,
+          descripcion: b2bProduct.descripcion_larga || b2bProduct.descripcion_corta,
+          precio_venta: b2bProduct.precio_sugerido_venta || b2bProduct.precio_mayorista * 1.3,
+          precio_costo: b2bProduct.precio_mayorista,
+          stock: b2bProduct.stock_fisico,
+          images: b2bProduct.galeria_imagenes || (b2bProduct.imagen_principal ? [b2bProduct.imagen_principal] : []),
+          store: null,
+          source_product: {
+            id: b2bProduct.id,
+            categoria_id: b2bProduct.categoria_id,
+            precio_mayorista: b2bProduct.precio_mayorista,
+            precio_sugerido_venta: b2bProduct.precio_sugerido_venta,
+            moq: b2bProduct.moq,
+            stock_fisico: b2bProduct.stock_fisico,
+            category: b2bProduct.category,
+          },
+        };
+      }
+
+      console.error("Product not found for SKU:", sku);
+      return null;
+    },
+    enabled: !!sku,
+  });
+};
 
 const ProductPage = () => {
   const { sku } = useParams();
@@ -43,8 +124,8 @@ const ProductPage = () => {
   // Determine if user is B2B (Seller)
   const isB2BUser = user?.role === 'seller';
 
-  // Fetch product data
-  const { data: product, isLoading } = useSellerProduct(sku);
+  // Fetch product data from both tables
+  const { data: product, isLoading } = useProductBySku(sku);
   
   // Local state
   const [selectedImage, setSelectedImage] = useState(0);
