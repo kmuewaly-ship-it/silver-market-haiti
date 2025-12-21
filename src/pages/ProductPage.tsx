@@ -437,8 +437,8 @@ const ProductPage = () => {
               {isB2BUser && (
                 <div className="mt-2 flex items-center gap-3 text-xs text-gray-600">
                   <div className="flex items-center gap-1.5">
-                    <span className="text-green-600">${pvp.toFixed(2)}</span>
-                    <span className="text-xs bg-green-100 px-1 py-0.5 rounded text-green-700">PVP</span>
+                    <span className="text-green-600 font-bold">${pvp.toFixed(2)}</span>
+                    <span className="text-xs bg-green-100 px-1 py-0.5 rounded text-green-700 font-bold">PVP</span>
                   </div>
                   <div className="h-4 w-px bg-gray-300"></div>
                   <div className="text-green-600 font-medium">
