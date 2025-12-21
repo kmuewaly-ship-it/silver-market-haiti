@@ -209,7 +209,7 @@ const SellerAccountPage = () => {
                                 {store?.id ? (
                                 <Button
                                     onClick={handleViewStore}
-                                    className="bg-[#94111f] hover:bg-[#7a0e19] text-white shadow-lg shadow-red-900/20 border-none"
+                                    className="bg-[#071d7f] hover:bg-[#071d7f]/90 text-white shadow-lg shadow-blue-900/20 border-none"
                                 >
                                     Ver Tienda
                                 </Button>

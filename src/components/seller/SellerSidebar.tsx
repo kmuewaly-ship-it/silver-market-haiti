@@ -85,7 +85,7 @@ export function SellerSidebar() {
               return <SidebarMenuItem key={item.title}>
                     <SidebarMenuButton asChild tooltip={item.title} isActive={active} className={`
                       h-auto py-3 px-3 rounded-xl transition-all duration-200 border mb-2
-                      ${active ? "!bg-[#071d7f] !text-white !border-[#071d7f] shadow-md hover:!bg-[#071d7f]/90 hover:!text-white" : "bg-white text-[#071d7f] border-[#94111f] hover:bg-gray-50 hover:text-[#071d7f]"}
+                      ${active ? "!bg-[#071d7f] !text-white !border-[#071d7f] shadow-md hover:!bg-[#071d7f]/90 hover:!text-white" : "bg-white text-[#071d7f] border-[#071d7f] hover:bg-gray-50 hover:text-[#071d7f]"}
                     `}>
                       <Link to={item.url} className="flex items-center gap-3 w-full">
                         <item.icon className={`h-5 w-5 flex-shrink-0 transition-colors ${active ? "text-white" : "text-[#071d7f]"}`} />

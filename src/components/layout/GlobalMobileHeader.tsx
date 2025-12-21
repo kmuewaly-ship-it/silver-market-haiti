@@ -334,7 +334,7 @@ const GlobalMobileHeader = ({
   const accountLink = showB2BStyle ? "/seller/cuenta" : "/cuenta";
   const accentColor = showB2BStyle ? "bg-blue-600" : "bg-[#071d7f]";
   const buttonColor = showB2BStyle ? "bg-blue-600 hover:bg-blue-700" : "bg-[#071d7f] hover:bg-[#071d7f]/90";
-  return <header className="bg-white sticky top-0 z-40">
+  return <header className="bg-[#ffdcdc] sticky top-0 z-40">
       {/* Top search bar */}
       <div className="flex items-center gap-3 px-3 py-2.5">
         {/* Logo/Icon - cambia según el modo */}

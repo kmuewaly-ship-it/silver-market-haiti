@@ -302,7 +302,7 @@ const SellerMobileHeader = ({
   };
 
   return (
-    <header className="bg-white sticky top-0 z-40">
+    <header className="bg-[#ffdcdc] sticky top-0 z-40">
       {/* Top search bar */}
       <div className="flex items-center gap-3 px-3 py-2.5">
         {/* Notification/Mail icon */}
@@ -368,7 +368,7 @@ const SellerMobileHeader = ({
                 )}
               </button>
             )}
-            <button type="submit" className="bg-gray-900 hover:bg-gray-800 p-2 rounded-full m-0.5 transition-colors">
+            <button type="submit" className="bg-[#071d7f] hover:bg-[#071d7f]/90 p-2 rounded-full m-0.5 transition-colors">
               {isSearching ? (
                 <Loader2 className="w-4 h-4 text-white animate-spin" />
               ) : (
@@ -450,7 +450,7 @@ const SellerMobileHeader = ({
       </div>
 
       {/* Category tabs - horizontal scroll with black background */}
-      <div className="flex items-center gap-4 px-3 py-2.5 overflow-x-auto scrollbar-hide bg-black">
+      <div className="flex items-center gap-4 px-3 py-2.5 overflow-x-auto scrollbar-hide bg-[#071d7f]">
         {/* "All" tab */}
         <button
           onClick={() => handleCategoryClick(null)}
