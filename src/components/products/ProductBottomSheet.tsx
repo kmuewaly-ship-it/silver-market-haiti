@@ -2,6 +2,9 @@ import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { UserRole } from "@/types/auth";
 import { useSmartCart } from "@/hooks/useSmartCart";
+import { useCart } from "@/hooks/useCart";
+import { useCartB2B } from "@/hooks/useCartB2B";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Minus, Plus, ShoppingCart, TrendingUp, DollarSign, Package } from "lucide-react";
@@ -33,15 +36,24 @@ interface Product {
   stock?: number;
 }
 
+interface SelectedVariation {
+  id: string;
+  label: string;
+  quantity: number;
+}
+
 interface ProductBottomSheetProps {
   product: Product | null;
   isOpen: boolean;
   onClose: () => void;
+  selectedVariations?: SelectedVariation[];
 }
 
-export const ProductBottomSheet = ({ product, isOpen, onClose }: ProductBottomSheetProps) => {
+export const ProductBottomSheet = ({ product, isOpen, onClose, selectedVariations }: ProductBottomSheetProps) => {
   const { user } = useAuth();
   const { addToCart } = useSmartCart();
+  const b2cCart = useCart();
+  const b2bCart = useCartB2B();
   const [quantity, setQuantity] = useState(1);
 
   const isSeller = user?.role === UserRole.SELLER;
@@ -77,7 +89,62 @@ export const ProductBottomSheet = ({ product, isOpen, onClose }: ProductBottomSh
     }
   };
 
-  const handleAddToCart = () => {
+  const handleAddToCart = (selected?: SelectedVariation[]) => {
+    // If we have selected variations, add each as separate cart lines
+    if (selected && selected.length > 0) {
+      const nonZero = selected.filter((v) => v.quantity && v.quantity > 0);
+      if (nonZero.length === 0) {
+        onClose();
+        return;
+      }
+
+      const isSeller = user?.role === UserRole.SELLER;
+
+      if (isSeller) {
+        nonZero.forEach((v) => {
+          const item = {
+            productId: `${product.id}:${v.id}`,
+            sku: `${product.sku}-${v.id}`,
+            nombre: `${product.name} - ${v.label}`,
+            precio_b2b: priceB2B,
+            moq: moq,
+            stock_fisico: v.quantity,
+            cantidad: v.quantity,
+            subtotal: priceB2B * v.quantity,
+            imagen_principal: product.image,
+          } as any;
+
+          const validation = b2bCart.validateItem ? b2bCart.validateItem(item) : { valid: true };
+          if (validation.valid) {
+            b2bCart.addItem(item);
+          } else {
+            toast.error(validation.error || 'Error al agregar al carrito B2B');
+          }
+        });
+        toast.success(`Agregado al carrito B2B: ${nonZero.length} variaciones`);
+      } else {
+        nonZero.forEach((v) => {
+          const id = `${product.id}:${v.id}`;
+          b2cCart.addItem({
+            id,
+            name: `${product.name} - ${v.label}`,
+            price: product.price,
+            image: product.image,
+            sku: `${product.sku}-${v.id}`,
+            storeId: product.storeId,
+            storeName: product.storeName,
+            storeWhatsapp: product.storeWhatsapp,
+          });
+          b2cCart.updateQuantity(id, v.quantity);
+        });
+        toast.success(`Añadido al carrito (${nonZero.reduce((s, x) => s + x.quantity, 0)} unidades)`);
+      }
+
+      onClose();
+      return;
+    }
+
+    // Fallback: single product add
     addToCart({
       id: product.id,
       name: product.name,
@@ -92,19 +159,6 @@ export const ProductBottomSheet = ({ product, isOpen, onClose }: ProductBottomSh
       storeName: product.storeName,
       storeWhatsapp: product.storeWhatsapp,
     });
-    // We might want to pass quantity to addToCart, but useSmartCart currently defaults to 1 or MOQ.
-    // I should update useSmartCart to accept quantity, or just call addItem directly on the underlying carts.
-    // For now, let's assume addToCart handles single items or I need to loop/update.
-    // Actually, looking at useSmartCart, it adds 1 or MOQ. It doesn't take quantity.
-    // I should probably update useSmartCart or handle it here.
-    // Let's update useSmartCart to accept quantity in a separate step if needed, 
-    // but for now I'll just call it. 
-    // Wait, if I want to add specific quantity, I should probably modify useSmartCart or call the underlying hooks.
-    // Let's stick to the current implementation of useSmartCart for now, which adds MOQ for B2B.
-    // If the user selected MORE than MOQ, we need to handle that.
-    
-    // TODO: Update useSmartCart to accept quantity override.
-    // For this implementation, I will just close the drawer.
     onClose();
   };
 
@@ -196,7 +250,7 @@ export const ProductBottomSheet = ({ product, isOpen, onClose }: ProductBottomSh
           </div>
 
           <DrawerFooter className="pb-8 flex-shrink-0">
-            <Button onClick={handleAddToCart} className="w-full h-12 text-base font-bold">
+            <Button onClick={() => handleAddToCart(selectedVariations)} className="w-full h-12 text-base font-bold">
               {isSeller ? (
                 <>
                   <Package className="mr-2 h-5 w-5" /> Comprar B2B

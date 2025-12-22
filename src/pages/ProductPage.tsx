@@ -136,10 +136,9 @@ const ProductPage = () => {
   // Scroll to section
   const scrollToSection = (ref: React.RefObject<HTMLDivElement>) => {
     if (ref.current) {
-      window.scrollTo({
-        top: ref.current.offsetTop - 56, // offset for sticky nav
-        behavior: 'smooth',
-      });
+      const offset = isMobile ? 72 : 64;
+      const top = ref.current.getBoundingClientRect().top + window.scrollY - offset;
+      window.scrollTo({ top, behavior: 'smooth' });
     }
   };
   const { sku } = useParams();
@@ -161,6 +160,112 @@ const ProductPage = () => {
   // Title collapse/expand
   const [titleExpanded, setTitleExpanded] = useState(false);
   const [showTitleToggle, setShowTitleToggle] = useState(false);
+
+  // Determine if title is long enough to show toggle
+  useEffect(() => {
+    setShowTitleToggle(Boolean(product && product.nombre && product.nombre.length > 60));
+  }, [product]);
+
+  // Variations state
+  type Variation = { id: string; label: string; stock?: number; quantity: number };
+  const [variations, setVariations] = useState<Variation[]>([]);
+  const [showBottomSheet, setShowBottomSheet] = useState(false);
+
+  // Derive variations from product fields (flexible: soporta varias estructuras)
+  useEffect(() => {
+    if (!product) return;
+
+    // Prefer explicit 'variantes' / 'variations' field
+    const raw: any = (product as any).variantes || (product as any).variations || (product as any).options;
+    if (Array.isArray(raw) && raw.length > 0) {
+      setVariations(raw.map((v: any, idx: number) => ({ id: v.id || String(idx), label: v.label || v.nombre || v, stock: v.stock || v.stock_fisico || undefined, quantity: 0 })));
+      return;
+    }
+
+    // Try colores / tallas combinations
+    const colores: string[] = (product as any).colores || (product as any).colors || [];
+    const tallas: string[] = (product as any).tallas || (product as any).sizes || [];
+
+    if (colores.length > 0 && tallas.length > 0) {
+      const combos: Variation[] = [];
+      colores.forEach((c, ci) => {
+        tallas.forEach((t, ti) => {
+          combos.push({ id: `${ci}-${ti}`, label: `${c} / ${t}`, quantity: 0 });
+        });
+      });
+      setVariations(combos);
+      return;
+    }
+
+    if (colores.length > 0) {
+      setVariations(colores.map((c, i) => ({ id: `c-${i}`, label: String(c), quantity: 0 })));
+      return;
+    }
+
+    if (tallas.length > 0) {
+      setVariations(tallas.map((s, i) => ({ id: `s-${i}`, label: String(s), quantity: 0 })));
+      return;
+    }
+
+    // Fallback: single default variation
+    setVariations([{ id: product.id || 'default', label: 'Default', quantity: 0, stock: product.stock || (product.source_product && product.source_product.stock_fisico) || undefined }]);
+  }, [product]);
+
+  const totalSelectedQty = variations.reduce((sum, v) => sum + (v.quantity || 0), 0);
+  const currentMoq = product?.source_product?.moq || (product as any).moq || 1;
+
+  const updateVariationQty = (id: string, newQty: number) => {
+    setVariations((prev) => prev.map((v) => v.id === id ? { ...v, quantity: Math.max(0, newQty) } : v));
+  };
+
+  const handleOpenPurchase = () => {
+    // If B2B enforce MOQ sum
+    if (isB2BUser && totalSelectedQty > 0 && totalSelectedQty < currentMoq) {
+      toast({ title: 'Cantidad mínima', description: `El pedido total debe ser al menos ${currentMoq} unidades.`, className: 'bg-yellow-100' });
+      return;
+    }
+    // Open bottom sheet with selected variations
+    setShowBottomSheet(true);
+  };
+
+  // Tabs state for Description / Reviews / Recs
+  const [activeTab, setActiveTab] = useState<'desc' | 'reviews' | 'recs'>('desc');
+
+  // Keyboard navigation for tabs
+  const handleTabKeyDown = (e: React.KeyboardEvent<HTMLButtonElement>) => {
+    if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+      setActiveTab((prev) => (prev === 'desc' ? 'reviews' : prev === 'reviews' ? 'recs' : 'desc'));
+    } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+      setActiveTab((prev) => (prev === 'recs' ? 'reviews' : prev === 'reviews' ? 'desc' : 'recs'));
+    }
+  };
+
+  // IntersectionObserver to update active tab on scroll
+  useEffect(() => {
+    const mapping: { ref: React.RefObject<HTMLDivElement>; id: 'desc' | 'reviews' | 'recs' }[] = [
+      { ref: descRef, id: 'desc' },
+      { ref: reviewsRef, id: 'reviews' },
+      { ref: recsRef, id: 'recs' },
+    ];
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            const found = mapping.find((m) => m.ref.current === entry.target);
+            if (found) setActiveTab(found.id);
+          }
+        });
+      },
+      { root: null, rootMargin: '-40% 0px -40% 0px', threshold: 0 }
+    );
+
+    mapping.forEach((m) => {
+      if (m.ref.current) observer.observe(m.ref.current);
+    });
+
+    return () => observer.disconnect();
+  }, [descRef, reviewsRef, recsRef]);
   
 
   // Cart hooks
@@ -314,10 +419,49 @@ const ProductPage = () => {
 
       {/* Sticky Nav Tabs: reemplaza la barra de categorías */}
       {!isMobile && showStickyNav && (
-        <div className="sticky top-0 z-40 bg-white border-b flex items-center justify-center gap-4 py-2 shadow-sm animate-fade-in">
-          <button className="px-3 py-1 text-sm font-medium text-[#071d7f]" onClick={() => scrollToSection(descRef)}>Descripción</button>
-          <button className="px-3 py-1 text-sm font-medium text-[#071d7f]" onClick={() => scrollToSection(reviewsRef)}>Valoraciones</button>
-          <button className="px-3 py-1 text-sm font-medium text-[#071d7f]" onClick={() => scrollToSection(recsRef)}>Recomendados</button>
+        <div className="sticky top-0 z-40 bg-white border-b py-2 shadow-sm animate-fade-in">
+          <div role="tablist" aria-label="Product sections" className="max-w-3xl mx-auto w-full px-2 py-1 flex items-center justify-center">
+            <div className="w-full max-w-md mx-auto rounded-md border border-[#071d7f] bg-white px-2 py-1 flex items-center justify-center gap-1">
+              <button
+                id="tab-desc"
+                role="tab"
+                aria-selected={activeTab === 'desc'}
+                aria-controls="section-desc"
+                tabIndex={activeTab === 'desc' ? 0 : -1}
+                onClick={() => { setActiveTab('desc'); scrollToSection(descRef); }}
+                onKeyDown={handleTabKeyDown}
+                className={`px-2 py-0.5 text-xs font-semibold ${activeTab === 'desc' ? 'bg-[#071d7f] text-white rounded-full shadow-sm' : 'bg-white border border-blue-100 text-[#071d7f] rounded-md'}`}
+              >
+                Descripción
+              </button>
+
+              <button
+                id="tab-reviews"
+                role="tab"
+                aria-selected={activeTab === 'reviews'}
+                aria-controls="section-reviews"
+                tabIndex={activeTab === 'reviews' ? 0 : -1}
+                onClick={() => { setActiveTab('reviews'); scrollToSection(reviewsRef); }}
+                onKeyDown={handleTabKeyDown}
+                className={`px-2 py-0.5 text-xs font-semibold ${activeTab === 'reviews' ? 'bg-[#071d7f] text-white rounded-full shadow-sm' : 'bg-white border border-blue-100 text-[#071d7f] rounded-md'}`}
+              >
+                Valoraciones
+              </button>
+
+              <button
+                id="tab-recs"
+                role="tab"
+                aria-selected={activeTab === 'recs'}
+                aria-controls="section-recs"
+                tabIndex={activeTab === 'recs' ? 0 : -1}
+                onClick={() => { setActiveTab('recs'); scrollToSection(recsRef); }}
+                onKeyDown={handleTabKeyDown}
+                className={`px-2 py-0.5 text-xs font-semibold ${activeTab === 'recs' ? 'bg-[#071d7f] text-white rounded-full shadow-sm' : 'bg-white border border-blue-100 text-[#071d7f] rounded-md'}`}
+              >
+                Recomendados
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
@@ -433,20 +577,39 @@ const ProductPage = () => {
               </div>
 
               <div className="flex flex-col gap-2">
-                <h1 className={`text-lg md:text-xl font-semibold text-gray-900 leading-tight mb-0`}>
-                  {titleExpanded ? product.nombre : (product.nombre.length <= 60 ? product.nombre : `${product.nombre.slice(0,60).trim()}...`)}
+                <h1 className={`text-lg md:text-xl font-semibold text-gray-900 leading-tight mb-0 ${titleExpanded ? '' : 'line-clamp-2'}`}>
+                  {titleExpanded ? (
+                    <>
+                      {product.nombre}
+                      {showTitleToggle && (
+                        <button
+                          onClick={() => setTitleExpanded(false)}
+                          className="ml-2 text-xs font-semibold px-2 py-1 rounded border border-[#071d7f] text-[#071d7f] pulse-btn"
+                          aria-expanded={true}
+                          aria-label="Collapse product title"
+                        >
+                          View less
+                        </button>
+                      )}
+                    </>
+                  ) : (
+                    product.nombre.length <= 60 ? (
+                      product.nombre
+                    ) : (
+                      <>
+                        {`${product.nombre.slice(0,60).trim()} `}
+                        <button
+                          onClick={() => setTitleExpanded(true)}
+                          className="text-xs font-semibold px-2 py-1 rounded border border-[#071d7f] text-[#071d7f] pulse-btn"
+                          aria-expanded={false}
+                          aria-label="Expand product title"
+                        >
+                          View more
+                        </button>
+                      </>
+                    )
+                  )}
                 </h1>
-                {showTitleToggle && (
-                  <div>
-                    <button
-                      onClick={() => setTitleExpanded(prev => !prev)}
-                      className="text-sm text-blue-600 hover:underline"
-                      aria-expanded={titleExpanded}
-                    >
-                      {titleExpanded ? 'Mostrar menos' : 'Mostrar más'}
-                    </button>
-                  </div>
-                )}
               </div>
             </div>
 
@@ -476,6 +639,96 @@ const ProductPage = () => {
                 </div>
               )}
             </div>
+
+              {/* Variations box (below price) - allows selecting qty per variation */}
+              <div className="mt-3 p-3 bg-gray-50 rounded-lg border border-gray-100">
+                <h4 className="text-sm font-semibold text-gray-800 mb-2">Variaciones</h4>
+                <div className="space-y-2">
+                  {variations.map((v) => (
+                    <div key={v.id} className="flex items-center justify-between gap-4">
+                      <div className="text-sm text-gray-700">{v.label}</div>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => updateVariationQty(v.id, (v.quantity || 0) - 1)}
+                          disabled={(v.quantity || 0) <= 0}
+                          className="px-2 py-0.5 border rounded bg-white text-gray-700"
+                        >
+                          −
+                        </button>
+                        <div className="w-10 text-center text-sm font-medium">{v.quantity || 0}</div>
+                        <button
+                          onClick={() => updateVariationQty(v.id, (v.quantity || 0) + 1)}
+                          className="px-2 py-0.5 border rounded bg-white text-gray-700"
+                        >
+                          +
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+
+                  <div className="flex items-center justify-between mt-2">
+                    <div className="text-sm text-gray-600">Total seleccionado:</div>
+                    <div className="text-sm font-bold text-gray-900">{totalSelectedQty}</div>
+                  </div>
+
+                  {isB2BUser && (
+                    <div className="mt-2 text-sm text-red-600">MOQ requerido: {currentMoq} unidades (la suma de las variaciones debe ser al menos MOQ)</div>
+                  )}
+
+                  <div className="mt-3 flex gap-2">
+                    <Button onClick={handleOpenPurchase} className="flex-1 h-10 text-sm font-semibold" disabled={totalSelectedQty === 0 && isB2BUser}>
+                      Seleccionar y Continuar
+                    </Button>
+                    <Button variant="outline" className="h-10" onClick={() => setVariations(variations.map(v => ({...v, quantity:0})))}>Limpiar</Button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Mobile Tabs (compact, scrollable) */}
+              {isMobile && (
+                <div role="tablist" aria-label="Product sections mobile" className="mt-3 px-4 flex gap-1 flex-wrap">
+                  <div className="w-full rounded-md border border-[#071d7f] bg-white px-2 py-1 flex gap-1 flex-nowrap items-center justify-start">
+                    <button
+                    id="tab-desc-mobile"
+                    role="tab"
+                    aria-selected={activeTab === 'desc'}
+                    aria-controls="section-desc"
+                    tabIndex={activeTab === 'desc' ? 0 : -1}
+                    onClick={() => { setActiveTab('desc'); scrollToSection(descRef); }}
+                    onKeyDown={handleTabKeyDown}
+                    className={`px-2 py-0.5 text-xs font-semibold ${activeTab === 'desc' ? 'bg-[#071d7f] text-white rounded-full shadow-sm' : 'bg-white border border-blue-100 text-[#071d7f] rounded-md'}`}
+                  >
+                    Descripción
+                  </button>
+
+                  <button
+                    id="tab-reviews-mobile"
+                    role="tab"
+                    aria-selected={activeTab === 'reviews'}
+                    aria-controls="section-reviews"
+                    tabIndex={activeTab === 'reviews' ? 0 : -1}
+                    onClick={() => { setActiveTab('reviews'); scrollToSection(reviewsRef); }}
+                    onKeyDown={handleTabKeyDown}
+                    className={`px-2 py-0.5 text-xs font-semibold ${activeTab === 'reviews' ? 'bg-[#071d7f] text-white rounded-full shadow-sm' : 'bg-white border border-blue-100 text-[#071d7f] rounded-md'}`}
+                  >
+                    Valoraciones
+                  </button>
+
+                  <button
+                    id="tab-recs-mobile"
+                    role="tab"
+                    aria-selected={activeTab === 'recs'}
+                    aria-controls="section-recs"
+                    tabIndex={activeTab === 'recs' ? 0 : -1}
+                    onClick={() => { setActiveTab('recs'); scrollToSection(recsRef); }}
+                    onKeyDown={handleTabKeyDown}
+                    className={`px-2 py-0.5 text-xs font-semibold ${activeTab === 'recs' ? 'bg-[#071d7f] text-white rounded-full shadow-sm' : 'bg-white border border-blue-100 text-[#071d7f] rounded-md'}`}
+                  >
+                    Recomendados
+                  </button>
+                  </div>
+                </div>
+              )}
 
 
             {/* Quantity Selector (Desktop) */}
@@ -527,20 +780,20 @@ const ProductPage = () => {
             )}
 
             {/* Description */}
-            <div ref={descRef} className="prose prose-sm max-w-none text-gray-600 scroll-mt-20">
+            <div id="section-desc" ref={descRef} className="prose prose-sm max-w-none text-gray-600 scroll-mt-20">
               <h3 className="text-lg font-semibold text-gray-900 mb-2">Descripción</h3>
               <p className="whitespace-pre-line">{product.descripcion}</p>
             </div>
 
             {/* Valoraciones */}
-            <div ref={reviewsRef} className="mt-10 scroll-mt-20">
+            <div id="section-reviews" ref={reviewsRef} className="mt-10 scroll-mt-20">
               <h3 className="text-lg font-semibold text-gray-900 mb-2">Valoraciones</h3>
               {/* Aquí iría el componente de reviews o placeholder */}
               <div className="bg-gray-50 border rounded-lg p-6 text-center text-gray-400">Sin valoraciones aún.</div>
             </div>
 
             {/* Recomendados */}
-            <div ref={recsRef} className="mt-10 scroll-mt-20">
+            <div id="section-recs" ref={recsRef} className="mt-10 scroll-mt-20">
               <h3 className="text-lg font-semibold text-gray-900 mb-2">Recomendados</h3>
               {/* Aquí iría el componente de recomendados o placeholder */}
               <div className="bg-gray-50 border rounded-lg p-6 text-center text-gray-400">Sin productos recomendados.</div>

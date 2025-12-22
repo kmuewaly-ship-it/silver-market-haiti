@@ -40,3 +40,15 @@
 .read-the-docs {
   color: #888;
 }
+
+/* Pulse button used for small inline toggles like 'View more' */
+.pulse-btn {
+  animation: pulse-box 2.2s ease-in-out infinite;
+  display: inline-block;
+}
+
+@keyframes pulse-box {
+  0% { transform: translateY(0); opacity: 1; }
+  50% { transform: translateY(-1px) scale(1.01); opacity: 0.95; }
+  100% { transform: translateY(0); opacity: 1; }
+}
