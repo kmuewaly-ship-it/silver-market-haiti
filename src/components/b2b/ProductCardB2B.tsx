@@ -122,8 +122,10 @@ const ProductCardB2B = ({ product, onAddToCart, cartItem, whatsappNumber = "5031
         <Link to={`/producto/${product.sku}`}>
           <div className="mt-1 hover:opacity-80 transition-opacity">
             <div className="flex items-baseline gap-1.5">
-              <span className="text-lg font-bold text-gray-900">
-                ${discountedPrice.toFixed(2)}
+              {/* Price badge for B2B card */}
+              <span className="inline-flex items-center gap-1 bg-[#fff5f6] border border-[#f2dede] px-2 py-0.5 rounded-md">
+                <span className="text-[#94111f] font-bold text-base">${discountedPrice.toFixed(2)}</span>
+                <span className="text-[10px] font-medium text-[#94111f]">USD</span>
               </span>
               {product.precio_sugerido && (
                 <span className="text-xs text-green-600 font-semibold">

@@ -158,8 +158,10 @@ const ProductCard = ({ product, b2bData }: ProductCardProps) => {
           {/* Precios */}
           <Link to={product.sku ? `/producto/${product.sku}` : '#'}>
             <div className="flex items-baseline gap-2 flex-wrap hover:opacity-80 transition-opacity">
-              <span className="text-lg font-bold text-primary">
-                ${displayPrice.toFixed(2)}
+              {/* Price badge with color #94111f and currency (default USD) */}
+              <span className="inline-flex items-center gap-1 bg-[#fff5f6] border border-[#f2dede] px-2 py-0.5 rounded-md">
+                <span className="text-[#94111f] font-bold text-base">${displayPrice.toFixed(2)}</span>
+                <span className="text-[10px] font-medium text-[#94111f]">USD</span>
               </span>
               
               {isSeller && strikethroughPrice && strikethroughPrice > displayPrice && (

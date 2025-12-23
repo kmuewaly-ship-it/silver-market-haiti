@@ -4,9 +4,11 @@ import { useParams, useNavigate, Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { UserRole } from '@/types/auth';
 import { useCart } from "@/hooks/useCart";
 import { useCartB2B } from "@/hooks/useCartB2B";
-import { useToast } from "@/hooks/use-toast";
+import { useToast } from '@/hooks/use-toast';
+import { useStore } from '@/hooks/useStore';
 import { useIsMobile } from "@/hooks/use-mobile";
 import GlobalHeader from "@/components/layout/GlobalHeader";
 import Footer from "@/components/layout/Footer";
@@ -29,7 +31,8 @@ import {
   Award,
   MessageCircle,
   Zap,
-  Info
+  Info,
+  Star,
 } from "lucide-react";
 
 // Hook to fetch product from both seller_catalog and products table
@@ -148,10 +151,12 @@ const ProductPage = () => {
   const isMobile = useIsMobile();
   
   // Determine if user is B2B (Seller)
-  const isB2BUser = user?.role === 'seller';
+  const isB2BUser = user?.role === UserRole.SELLER;
 
   // Fetch product data from both tables
   const { data: product, isLoading } = useProductBySku(sku);
+  // Load store profile when product comes from a seller catalog (used to determine currency)
+  const { data: storeData } = useStore((product as any)?.store?.id);
   
   // Local state
   const [selectedImage, setSelectedImage] = useState(0);
@@ -384,6 +389,57 @@ const ProductPage = () => {
     }
   };
 
+  // Quick-add: add selected variations (if any) or current quantity directly to cart
+  const handleQuickAdd = () => {
+    if (!product) return;
+
+    // If there are variations selected, add them
+    if (variations.length > 0 && totalSelectedQty > 0) {
+      // Enforce MOQ for B2B
+      if (isB2BUser && totalSelectedQty < currentMoq) {
+        toast({ title: 'Cantidad mínima', description: `El pedido total debe ser al menos ${currentMoq} unidades.`, className: 'bg-yellow-100' });
+        return;
+      }
+
+      variations.forEach((v) => {
+        const qty = v.quantity || 0;
+        if (qty <= 0) return;
+        if (isB2BUser) {
+          addItemB2B({
+            productId: product.source_product?.id || product.id,
+            nombre: product.nombre,
+            precio_b2b: costB2B,
+            moq: moq,
+            stock_fisico: stockB2B,
+            sku: product.sku,
+            imagen_principal: images[0] || '',
+            cantidad: qty,
+            subtotal: costB2B * qty
+          });
+        } else {
+          for (let i = 0; i < qty; i++) {
+            addItemB2C({
+              id: product.id,
+              name: product.nombre,
+              price: product.precio_venta,
+              image: images[0] || '',
+              sku: product.sku,
+              storeId: product.store?.id,
+              storeName: product.store?.name,
+              storeWhatsapp: product.store?.whatsapp || undefined,
+            });
+          }
+        }
+      });
+
+      toast({ title: isB2BUser ? 'Agregado al pedido B2B' : 'Producto agregado', description: `${product.nombre} (x${totalSelectedQty})`, });
+      return;
+    }
+
+    // Fallback: use single quantity selector
+    handleAddToCart();
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gray-50">
@@ -522,6 +578,20 @@ const ProductPage = () => {
                 </>
               )}
 
+              {/* Rating overlay bottom-right */}
+              <div className="absolute bottom-4 right-4">
+                <button
+                  onClick={() => scrollToSection(reviewsRef)}
+                  className="inline-flex items-center gap-2 bg-white/90 hover:bg-white rounded-lg px-3 py-1 shadow-md border border-gray-100"
+                >
+                  <Star className="w-4 h-4 text-yellow-400" />
+                  <div className="text-sm text-gray-800 font-medium leading-none">
+                    {(product as any).rating ? (product as any).rating.toFixed ? (product as any).rating.toFixed(1) : (product as any).rating : '0.0'}
+                    <div className="text-xs text-gray-500">({(product as any).reviews ?? 0})</div>
+                  </div>
+                  <ChevronRight className="w-4 h-4 text-gray-400" />
+                </button>
+              </div>
               {/* B2B Profit Badge Overlay */}
               {isB2BUser && businessSummary && businessSummary.profitPerUnit > 0 && (
                 <div className="absolute top-4 left-4">
@@ -556,7 +626,7 @@ const ProductPage = () => {
           </div>
 
           {/* Product Info */}
-          <div className={`space-y-6 ${isMobile ? 'px-4' : ''}`}> 
+          <div className={`space-y-3 ${isMobile ? 'px-4' : ''}`}> 
             <div>
               {/* Badges */}
               <div className="flex flex-wrap gap-2 mb-3">
@@ -578,51 +648,89 @@ const ProductPage = () => {
               </div>
 
               <div className="flex flex-col gap-2">
-                <h1 className={`text-lg md:text-xl font-semibold text-gray-900 leading-tight mb-0 ${titleExpanded ? '' : 'line-clamp-2'}`}>
+                <h1 className={`text-lg md:text-xl font-semibold text-gray-900 leading-tight mb-0`}>
                   {titleExpanded ? (
-                    <>
-                      {product.nombre}
+                    <div className="flex items-start gap-2">
+                      <div className="whitespace-normal">{product.nombre}</div>
                       {showTitleToggle && (
                         <button
                           onClick={() => setTitleExpanded(false)}
-                          className="ml-2 text-xs font-semibold px-2 py-1 rounded border border-[#071d7f] text-[#071d7f] pulse-btn"
+                          className="ml-2 text-xs font-semibold px-2 py-1 rounded border border-[#071d7f] text-[#071d7f] pulse-btn bg-white z-10"
                           aria-expanded={true}
                           aria-label="Collapse product title"
                         >
                           View less
                         </button>
                       )}
-                    </>
+                    </div>
                   ) : (
-                    product.nombre.length <= 60 ? (
-                      product.nombre
-                    ) : (
-                      <>
-                        {`${product.nombre.slice(0,60).trim()} `}
+                    <div className="flex items-baseline gap-1">
+                      <div className="flex-1 line-clamp-2 break-words">
+                        {product.nombre}
+                      </div>
+                      {showTitleToggle && (
                         <button
                           onClick={() => setTitleExpanded(true)}
-                          className="text-xs font-semibold px-2 py-1 rounded border border-[#071d7f] text-[#071d7f] pulse-btn"
+                          className="inline-block align-baseline ml-1 text-xs font-semibold px-2 py-1 rounded border border-[#071d7f] text-[#071d7f] pulse-btn bg-white z-10"
                           aria-expanded={false}
                           aria-label="Expand product title"
                         >
                           View more
                         </button>
-                      </>
-                    )
+                      )}
+                    </div>
                   )}
                 </h1>
               </div>
             </div>
 
             {/* Price Section */}
-            <div className={`p-4 rounded-lg ${isB2BUser ? 'bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-100' : 'bg-gray-50'}`}>
-              <div className="flex items-baseline gap-2 flex-wrap">
-                <span className={`text-2xl font-bold ${isB2BUser ? 'text-blue-700' : 'text-gray-900'}`}> 
-                  ${displayPrice.toFixed(2)}
-                </span>
+            <div className={`p-2 rounded-md ${isB2BUser ? 'bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-100' : 'bg-gray-50'}`}>
+              <div className="flex items-baseline gap-2 flex-wrap justify-between">
+                {/* Price area: promo price (left badge) + original price (right, struck) with discount badge */}
+                {(() => {
+                  const currencyCode = ((storeData && (storeData?.metadata?.currency || (storeData as any).currency)) || 'USD').toUpperCase();
+
+                  // Determine original and promotional prices (use established fields)
+                  const originalPriceRaw = (product as any).originalPrice || product.source_product?.precio_sugerido_venta || product.precio_venta;
+                  const promoPriceRaw = (product as any).precio_promocion || (product.precio_venta < (originalPriceRaw || Infinity) ? product.precio_venta : null);
+
+                  const originalPriceNum = typeof originalPriceRaw === 'number' ? originalPriceRaw : Number(originalPriceRaw) || null;
+                  const promoPriceNum = promoPriceRaw != null ? (typeof promoPriceRaw === 'number' ? promoPriceRaw : Number(promoPriceRaw)) : null;
+
+                  // Consider it a promo only when original is greater than promo by a sensible amount
+                  const hasPromo = promoPriceNum != null && originalPriceNum != null && promoPriceNum < originalPriceNum - 0.005;
+
+                  return (
+                    <div className="flex items-center gap-2">
+                      {/* Promo / current price */}
+                      {hasPromo ? (
+                        <span className={`inline-flex items-center gap-1 bg-[#fff5f6] border border-[#f2dede] px-1.5 py-0.5 rounded-sm ${isMobile ? '' : '-ml-1'}`}>
+                          <span className="text-[#94111f] font-bold text-base">${promoPriceNum!.toFixed(2)}</span>
+                          <span className="text-xs font-medium text-[#94111f]">{currencyCode}</span>
+                        </span>
+                      ) : (
+                        <span className={`inline-flex items-center gap-1 bg-[#fff5f6] border border-[#f2dede] px-1.5 py-0.5 rounded-sm ${isMobile ? '' : '-ml-1'}`}>
+                          <span className="text-[#94111f] font-bold text-base">${displayPrice.toFixed(2)}</span>
+                          <span className="text-xs font-medium text-[#94111f]">{currencyCode}</span>
+                        </span>
+                      )}
+
+                      {/* Original price & discount, placed right next to promo price */}
+                      {hasPromo && originalPriceNum != null && promoPriceNum != null && (
+                        <>
+                          <span className="text-sm text-gray-500 line-through">${originalPriceNum.toFixed(2)}</span>
+                          <span className="inline-flex items-center bg-green-50 text-green-700 px-2 py-0.5 rounded text-xs font-semibold">
+                            -{Math.round(((originalPriceNum - promoPriceNum) / originalPriceNum) * 100)}%
+                          </span>
+                        </>
+                      )}
+                    </div>
+                  );
+                })()}
                 {isB2BUser && (
                   <span className="text-xs font-medium text-blue-600 bg-blue-100 px-2 py-0.5 rounded">
-                    Costo B2B
+                    B2B
                   </span>
                 )}
               </div>
@@ -672,15 +780,12 @@ const ProductPage = () => {
                     <div className="text-sm font-bold text-gray-900">{totalSelectedQty}</div>
                   </div>
 
-                  {isB2BUser && (
-                    <div className="mt-2 text-sm text-red-600">MOQ requerido: {currentMoq} unidades (la suma de las variaciones debe ser al menos MOQ)</div>
-                  )}
+                  {/* Removed MOQ warning message as user can decrement variations with '-' button */}
 
-                  <div className="mt-3 flex gap-2">
-                    <Button onClick={handleOpenPurchase} className="flex-1 h-10 text-sm font-semibold" disabled={totalSelectedQty === 0 && isB2BUser}>
-                      Seleccionar y Continuar
+                  <div className="mt-3">
+                    <Button onClick={handleQuickAdd} className="w-full h-10 text-sm font-semibold" disabled={totalSelectedQty === 0 && isB2BUser}>
+                      {isB2BUser ? 'Agregar al Pedido' : 'Agregar al Carrito'}
                     </Button>
-                    <Button variant="outline" className="h-10" onClick={() => setVariations(variations.map(v => ({...v, quantity:0})))}>Limpiar</Button>
                   </div>
                 </div>
               </div>
