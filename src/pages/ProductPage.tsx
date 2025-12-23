@@ -212,7 +212,8 @@ const ProductPage = () => {
   }, [product]);
 
   const totalSelectedQty = variations.reduce((sum, v) => sum + (v.quantity || 0), 0);
-  const currentMoq = product?.source_product?.moq || (product as any).moq || 1;
+  // Guard accesses to 'product' to avoid runtime errors when product is undefined
+  const currentMoq = product?.source_product?.moq || (product as any)?.moq || 1;
 
   const updateVariationQty = (id: string, newQty: number) => {
     setVariations((prev) => prev.map((v) => v.id === id ? { ...v, quantity: Math.max(0, newQty) } : v));
