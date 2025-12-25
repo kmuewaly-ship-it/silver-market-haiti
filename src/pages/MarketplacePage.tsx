@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { ShoppingCart, Store, Search, Package, Grid3X3, X } from "lucide-react";
+import { ProductBottomSheet } from "@/components/products/ProductBottomSheet";
 import useVariantDrawerStore from "@/stores/useVariantDrawerStore";
 
 const MarketplacePage = () => {
@@ -25,6 +26,8 @@ const MarketplacePage = () => {
   } = usePublicCategories();
   const { addToCart, isB2BUser } = useSmartCart();
   const [searchQuery, setSearchQuery] = useState("");
+  const [selectedProduct, setSelectedProduct] = useState<typeof products[0] | null>(null);
+  const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [selectedStore, setSelectedStore] = useState<string>("all");
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [sortBy, setSortBy] = useState<string>("newest");
@@ -73,17 +76,22 @@ const MarketplacePage = () => {
     const images = product.images as any;
     const mainImage = Array.isArray(images) && images.length > 0 ? images[0] : typeof images === 'string' ? images : '';
     
-    useVariantDrawerStore.getState().open({
-      id: product.id,
-      sku: product.sku,
-      nombre: product.nombre,
-      images: mainImage ? [mainImage] : [],
-      price: product.precio_venta,
-      costB2B: product.precio_costo,
-      moq: 1,
-      stock: product.stock,
-      source_product_id: product.source_product?.id,
-    });
+    if (isMobile) {
+      setSelectedProduct(product);
+      setIsSheetOpen(true);
+    } else {
+      useVariantDrawerStore.getState().open({
+        id: product.id,
+        sku: product.sku,
+        nombre: product.nombre,
+        images: mainImage ? [mainImage] : [],
+        price: product.precio_venta,
+        costB2B: product.precio_costo,
+        moq: 1,
+        stock: product.stock,
+        source_product_id: product.source_product?.id,
+      });
+    }
   };
   const clearFilters = () => {
     setSearchQuery("");
@@ -92,7 +100,9 @@ const MarketplacePage = () => {
     setSortBy("newest");
   };
   const hasActiveFilters = searchQuery || selectedStore !== "all" || selectedCategory !== "all";
-  return <div className="min-h-screen bg-background flex flex-col">
+  
+  return (
+    <div className="min-h-screen bg-background flex flex-col">
       {!isMobile && <Header />}
       
       <main className={`flex-1 container mx-auto px-4 py-6 ${isMobile ? 'pb-20' : ''}`}>
@@ -233,12 +243,22 @@ const MarketplacePage = () => {
                       {product.stock > 0 ? (isB2BUser ? 'Agregar B2B' : 'Agregar') : 'Sin Stock'}
                     </Button>
                   </div>
-                </div>;
+                </div>
         })}
           </div>}
       </main>
 
+      {isMobile && selectedProduct && (
+        <ProductBottomSheet 
+          isOpen={isSheetOpen} 
+          onOpenChange={setIsSheetOpen}
+          product={selectedProduct}
+        />
+      )}
+
       {!isMobile && <Footer />}
-    </div>;
+    </div>
+  );
 };
+
 export default MarketplacePage;

@@ -7,6 +7,7 @@ export interface VariantDrawerProduct {
   images?: string[];
   price?: number;
   costB2B?: number;
+  pvp?: number;
   moq?: number;
   stock?: number;
   source_product_id?: string;

@@ -12,6 +12,7 @@ export interface ProductB2BCard {
   stock_fisico: number;
   imagen_principal: string;
   categoria_id: string;
+  source_product_id?: string; // Reference to products table for variants
 }
 
 export interface CartItemB2B {

@@ -4,6 +4,7 @@ import { UserRole } from "@/types/auth";
 import { useSmartCart } from "@/hooks/useSmartCart";
 import { useCart } from "@/hooks/useCart";
 import { useCartB2B } from "@/hooks/useCartB2B";
+import VariantSelector from './VariantSelector';
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -34,6 +35,7 @@ interface Product {
   pvp?: number;
   moq?: number;
   stock?: number;
+  source_product_id?: string;
 }
 
 interface SelectedVariation {
@@ -55,26 +57,26 @@ export const ProductBottomSheet = ({ product, isOpen, onClose, selectedVariation
   const b2cCart = useCart();
   const b2bCart = useCartB2B();
   const [quantity, setQuantity] = useState(1);
+  const [selections, setSelections] = useState<any[]>([]);
 
   const isSeller = user?.role === UserRole.SELLER;
 
   // Reset quantity when product changes or opens
   useEffect(() => {
     if (product) {
-      setQuantity(isSeller ? (product.moq || 1) : 1);
+      setQuantity(1); // Always start from 1, MOQ is validated on sum of variants
+      setSelections([]);
     }
   }, [product, isSeller, isOpen]);
 
-  if (!product) return null;
-
   // B2B Logic
-  const moq = product.moq || 1;
-  const priceB2B = product.priceB2B || product.price;
-  const pvp = product.pvp || product.originalPrice || product.price;
-  const stock = product.stock || 100; // Fallback stock
+  const moq = product?.moq || 1;
+  const priceB2B = product?.priceB2B || product?.price || 0;
+  const pvp = product?.pvp || product?.originalPrice || product?.price || 0;
+  const stock = product?.stock || 100; // Fallback stock
 
   // Calculations
-  const currentPrice = isSeller ? priceB2B : product.price;
+  const currentPrice = isSeller ? priceB2B : product?.price || 0;
   const totalInvestment = currentPrice * quantity;
   const totalRevenue = pvp * quantity;
   const totalProfit = totalRevenue - totalInvestment;
@@ -82,7 +84,7 @@ export const ProductBottomSheet = ({ product, isOpen, onClose, selectedVariation
 
   const handleQuantityChange = (delta: number) => {
     const newQuantity = quantity + delta;
-    const minQty = isSeller ? moq : 1;
+    const minQty = 1; // Allow starting from 1, MOQ validation is done on total sum
     
     if (newQuantity >= minQty && newQuantity <= stock) {
       setQuantity(newQuantity);
@@ -165,6 +167,7 @@ export const ProductBottomSheet = ({ product, isOpen, onClose, selectedVariation
   return (
     <Drawer open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DrawerContent className="max-h-[90vh]">
+        {product ? (
         <div className="mx-auto w-full max-w-sm flex flex-col max-h-[85vh]">
           <DrawerHeader className="flex-shrink-0 pb-2">
             <div className="flex gap-3 items-start text-left">
@@ -184,33 +187,67 @@ export const ProductBottomSheet = ({ product, isOpen, onClose, selectedVariation
           </DrawerHeader>
 
           <div className="px-4 pb-2 overflow-y-auto flex-1">
-            {/* Quantity Selector - more compact on mobile */}
-            <div className="flex items-center justify-between mb-4 sm:mb-6">
-              <span className="text-xs sm:text-sm font-medium text-gray-700">Cantidad:</span>
-              <div className="flex items-center border border-gray-200 rounded-md">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8 sm:h-10 sm:w-10 rounded-none"
-                  onClick={() => handleQuantityChange(-1)}
-                  disabled={quantity <= (isSeller ? moq : 1)}
-                >
-                  <Minus className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                </Button>
-                <div className="w-12 sm:w-16 text-center text-sm sm:text-base font-medium">
-                  {quantity}
-                </div>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8 sm:h-10 sm:w-10 rounded-none"
-                  onClick={() => handleQuantityChange(1)}
-                  disabled={quantity >= stock}
-                >
-                  <Plus className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                </Button>
-              </div>
+            {/* Variant Selector from Database */}
+            <div className="mb-4 sm:mb-6">
+              <VariantSelector 
+                productId={product?.source_product_id || product?.id || ''}
+                basePrice={product?.price || 0}
+                isB2B={isSeller}
+                onSelectionChange={(list) => setSelections(list)}
+              />
             </div>
+
+            {/* Total Quantity Display - show sum of all variant quantities */}
+            {selections.length > 0 && (() => {
+              const totalVariantQty = selections.reduce((sum, v) => sum + (v.quantity || 0), 0);
+              const isUnderMOQ = isSeller && totalVariantQty < moq;
+              
+              return (
+                <div className="mb-4 sm:mb-6">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs sm:text-sm font-medium text-gray-700">Cantidad Total:</span>
+                    <div className="px-4 py-2 bg-gray-100 rounded-md">
+                      <span className="text-sm sm:text-base font-bold text-gray-900">{totalVariantQty}</span>
+                    </div>
+                  </div>
+                  {isUnderMOQ && (
+                    <p className="text-xs sm:text-sm text-red-600 font-medium">
+                      ⚠️ Cantidad mínima requerida: {moq} unidades. Faltan {moq - totalVariantQty} unidades.
+                    </p>
+                  )}
+                </div>
+              );
+            })()}
+
+            {/* Quantity Selector - only show when no variant selections */}
+            {selections.length === 0 && (
+              <div className="flex items-center justify-between mb-4 sm:mb-6">
+                <span className="text-xs sm:text-sm font-medium text-gray-700">Cantidad:</span>
+                <div className="flex items-center border border-gray-200 rounded-md">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 sm:h-10 sm:w-10 rounded-none"
+                    onClick={() => handleQuantityChange(-1)}
+                    disabled={quantity <= 1}
+                  >
+                    <Minus className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                  </Button>
+                  <div className="w-12 sm:w-16 text-center text-sm sm:text-base font-medium">
+                    {quantity}
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 sm:h-10 sm:w-10 rounded-none"
+                    onClick={() => handleQuantityChange(1)}
+                    disabled={quantity >= stock}
+                  >
+                    <Plus className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                  </Button>
+                </div>
+              </div>
+            )}
 
             {/* B2B Business Panel - compact for mobile */}
             {isSeller && (
@@ -250,22 +287,33 @@ export const ProductBottomSheet = ({ product, isOpen, onClose, selectedVariation
           </div>
 
           <DrawerFooter className="pb-6 sm:pb-8 pt-2 flex-shrink-0">
-            <Button onClick={() => handleAddToCart(selectedVariations)} className="w-full h-10 sm:h-12 text-sm sm:text-base font-bold">
-              {isSeller ? (
-                <>
-                  <Package className="mr-1.5 sm:mr-2 h-4 w-4 sm:h-5 sm:w-5" /> Comprar B2B
-                </>
-              ) : (
-                <>
-                  <ShoppingCart className="mr-1.5 sm:mr-2 h-4 w-4 sm:h-5 sm:w-5" /> Añadir al Carrito
-                </>
-              )}
+            <Button 
+              onClick={() => handleAddToCart(selections.length > 0 ? selections : selectedVariations)} 
+              className="h-12 px-6 bg-blue-600 hover:bg-blue-700 text-white font-bold shadow-lg shadow-blue-200 md:hidden" 
+              disabled={(() => {
+                if (stock === 0) return true;
+                if (isSeller && selections.length > 0) {
+                  const totalVariantQty = selections.reduce((sum, v) => sum + (v.quantity || 0), 0);
+                  return totalVariantQty < moq;
+                }
+                if (isSeller && selections.length === 0) {
+                  return quantity < moq;
+                }
+                return false;
+              })()}
+            >
+              {isSeller ? 'Comprar B2B' : 'Comprar'}
             </Button>
             <DrawerClose asChild>
               <Button variant="outline" className="h-9 sm:h-10 text-sm">Cancelar</Button>
             </DrawerClose>
           </DrawerFooter>
         </div>
+        ) : (
+          <div className="py-8 text-center text-gray-500">
+            Cargando producto...
+          </div>
+        )}
       </DrawerContent>
     </Drawer>
   );

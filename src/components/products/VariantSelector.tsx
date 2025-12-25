@@ -53,18 +53,10 @@ const VariantSelector = ({
   const updateQuantity = (variantId: string, delta: number, variant: ProductVariant) => {
     setSelections((prev) => {
       const current = prev[variantId] || 0;
-      const minQty = isB2B ? variant.moq : 0;
       let newQty = current + delta;
 
-      // For B2B: if going from 0, jump to MOQ
-      if (isB2B && current === 0 && delta > 0) {
-        newQty = variant.moq;
-      }
-      // For B2B: if going below MOQ, go to 0
-      if (isB2B && newQty < variant.moq && newQty > 0) {
-        newQty = 0;
-      }
-      // Normal: ensure >= 0 and <= stock
+      // Ensure quantity is within valid range (0 to stock)
+      // MOQ validation is now done on the total sum in ProductBottomSheet
       newQty = Math.max(0, Math.min(variant.stock, newQty));
 
       return { ...prev, [variantId]: newQty };

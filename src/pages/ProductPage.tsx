@@ -6,6 +6,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { UserRole } from '@/types/auth';
 import { useCart } from "@/hooks/useCart";
 import { useCartB2B } from "@/hooks/useCartB2B";
+import { useFavorites } from "@/hooks/useFavorites";
 import { useToast } from '@/hooks/use-toast';
 import { useStore } from '@/hooks/useStore';
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -14,6 +15,7 @@ import GlobalHeader from "@/components/layout/GlobalHeader";
 import Footer from "@/components/layout/Footer";
 import VariantSelector from "@/components/products/VariantSelector";
 import VariantDrawer from '@/components/products/VariantDrawer';
+import { ProductBottomSheet } from '@/components/products/ProductBottomSheet';
 import useVariantDrawerStore from '@/stores/useVariantDrawerStore';
 import ProductReviews from "@/components/products/ProductReviews";
 import { Button } from "@/components/ui/button";
@@ -99,6 +101,7 @@ const useProductBySku = (sku: string | undefined) => {
 const ProductPage = () => {
   // Sticky nav state
   const [showStickyNav, setShowStickyNav] = useState(false);
+  const [isBottomSheetOpen, setIsBottomSheetOpen] = useState(false);
   const imageRef = useRef<HTMLDivElement>(null);
   const descRef = useRef<HTMLDivElement>(null);
   const reviewsRef = useRef<HTMLDivElement>(null);
@@ -137,6 +140,7 @@ const ProductPage = () => {
     toast
   } = useToast();
   const isMobile = useIsMobile();
+  const { isFavorite, toggleFavorite } = useFavorites();
 
   // Determine if user is B2B (Seller)
   const isB2BUser = user?.role === UserRole.SELLER;
@@ -377,6 +381,14 @@ const ProductPage = () => {
   };
   const handleAddToCart = () => {
     if (!product) return;
+    
+    // On mobile, open ProductBottomSheet instead of adding directly
+    if (isMobile) {
+      setIsBottomSheetOpen(true);
+      return;
+    }
+    
+    // Desktop only: add directly to cart
     if (isB2BUser) {
       addItemB2B({
         productId: product.source_product?.id || product.id,
@@ -673,41 +685,48 @@ const ProductPage = () => {
 
               {/* Variant Selector - Uses database variants */}
               <div className="mt-3">
-                {/* The VariantDrawer handles variant selection & add-to-cart flow. Open it via store */}
-                <h4 className="text-sm font-semibold text-gray-800 mb-2">Variaciones</h4>
+                {/* Open ProductBottomSheet on mobile, VariantDrawer on desktop */}
                 <div className="p-3 bg-gray-50 rounded-lg border border-gray-100">
-                  <div className="flex items-center justify-between gap-4">
-                    <div className="text-sm text-gray-700">Cantidad</div>
-                    <div className="flex items-center gap-2">
-                      <button onClick={() => setQuantity(Math.max(minQuantity, quantity - 1))} disabled={quantity <= minQuantity} className="px-2 py-0.5 border rounded bg-white text-gray-700">
-                        −
-                      </button>
-                      <div className="w-10 text-center text-sm font-medium">{quantity}</div>
-                      <button onClick={() => setQuantity(Math.min(maxQuantity, quantity + 1))} disabled={quantity >= maxQuantity} className="px-2 py-0.5 border rounded bg-white text-gray-700">
-                        +
-                      </button>
-                    </div>
-                  </div>
-                  <div className="mt-3">
-                    <Button onClick={() => useVariantDrawerStore.getState().open({
-                      id: product.id,
-                      sku: product.sku,
-                      nombre: product.nombre,
-                      images: images,
-                      price: isB2BUser ? costB2B : product.precio_venta,
-                      costB2B: costB2B,
-                      moq: moq,
-                      stock: isB2BUser ? stockB2B : product.stock,
-                      source_product_id: product.source_product?.id,
-                    }, () => {
-                      // onComplete: scroll to recommendations
-                      if (recsRef.current) {
-                        const offset = isMobile ? 72 : 64;
-                        const top = recsRef.current.getBoundingClientRect().top + window.scrollY - offset;
-                        window.scrollTo({ top, behavior: 'smooth' });
+                  <div className="mt-3 flex items-center gap-3">
+                    <button onClick={() => {
+                      if (product) {
+                        toggleFavorite({
+                          id: product.id,
+                          name: product.nombre,
+                          price: isB2BUser ? product.precio_costo : product.precio_venta,
+                          image: images[0] || '',
+                          sku: product.sku,
+                        });
                       }
-                    })} className="w-full h-10 text-sm font-semibold">
-                      {isB2BUser ? 'Agregar al Pedido' : 'Agregar al Carrito'}
+                    }} className="p-3 rounded-lg border border-gray-200 hover:bg-gray-100 transition-all duration-300 active:scale-90">
+                      <Heart className={`w-5 h-5 transition-all duration-300 ${product && isFavorite(product.id) ? 'fill-red-500 text-red-500 animate-heart-shake' : 'text-gray-600'}`} />
+                    </button>
+                    <Button onClick={() => {
+                      if (isMobile) {
+                        setIsBottomSheetOpen(true);
+                      } else {
+                        useVariantDrawerStore.getState().open({
+                          id: product.id,
+                          sku: product.sku,
+                          nombre: product.nombre,
+                          images: images,
+                          price: isB2BUser ? costB2B : product.precio_venta,
+                          costB2B: costB2B,
+                          moq: moq,
+                          stock: isB2BUser ? stockB2B : product.stock,
+                          source_product_id: product.source_product?.id,
+                        }, () => {
+                          // onComplete: scroll to recommendations
+                          if (recsRef.current) {
+                            const offset = isMobile ? 72 : 64;
+                            const top = recsRef.current.getBoundingClientRect().top + window.scrollY - offset;
+                            window.scrollTo({ top, behavior: 'smooth' });
+                          }
+                        });
+                      }
+                    }} className="w-auto px-3 h-10 text-sm font-semibold flex items-center gap-2">
+                      <ShoppingCart className="w-4 h-4" />
+                      {isB2BUser ? 'Comprar B2B' : 'Comprar'}
                     </Button>
                   </div>
                 </div>
@@ -739,33 +758,6 @@ const ProductPage = () => {
                   </div>
                 </div>}
 
-
-            {/* Quantity Selector (Desktop) */}
-            {!isMobile && <div className="flex items-center gap-4">
-                <div className="flex items-center border border-gray-300 rounded-lg bg-white">
-                  <button onClick={() => handleQuantityChange(quantity - 1)} disabled={quantity <= minQuantity} className="px-4 py-2 hover:bg-gray-50 disabled:opacity-50 text-gray-600">
-                    −
-                  </button>
-                  <input type="number" value={quantity} onChange={e => handleQuantityChange(parseInt(e.target.value) || minQuantity)} className="w-16 text-center border-none focus:ring-0 p-0 text-gray-900 font-medium" />
-                  <button onClick={() => handleQuantityChange(quantity + 1)} disabled={quantity >= maxQuantity} className="px-4 py-2 hover:bg-gray-50 disabled:opacity-50 text-gray-600">
-                    +
-                  </button>
-                </div>
-                <span className="text-sm text-gray-500">
-                  {isB2BUser ? stockB2B : product.stock} disponibles
-                </span>
-              </div>}
-
-            {/* Desktop Actions */}
-            {!isMobile && <div className="flex gap-3">
-                <Button onClick={handleAddToCart} className={`flex-1 h-12 text-lg font-semibold ${isB2BUser ? 'bg-blue-600 hover:bg-blue-700' : 'bg-gray-900 hover:bg-gray-800'}`} disabled={(isB2BUser ? stockB2B : product.stock) === 0}>
-                  <ShoppingCart className="w-5 h-5 mr-2" />
-                  {isB2BUser ? 'Agregar al Pedido' : 'Agregar al Carrito'}
-                </Button>
-                <Button variant="outline" className="h-12 w-12 p-0">
-                  <Heart className="w-5 h-5" />
-                </Button>
-              </div>}
 
             {/* Description */}
             <div id="section-desc" ref={descRef} className="prose prose-sm max-w-none text-gray-600 scroll-mt-20">
@@ -851,45 +843,50 @@ const ProductPage = () => {
               
               <div className="flex gap-3">
                 {/* Quantity Selector Compact */}
-                <div className="flex items-center border border-gray-300 rounded-lg h-12 bg-gray-50">
-                  <button onClick={() => handleQuantityChange(quantity - 1)} disabled={quantity <= minQuantity} className="px-3 h-full text-gray-600 disabled:opacity-30">
+                <button onClick={() => setIsBottomSheetOpen(true)} className="flex items-center border border-gray-300 rounded-lg h-12 bg-gray-50 hover:bg-gray-100">
+                  <button onClick={(e) => { e.stopPropagation(); handleQuantityChange(quantity - 1); }} disabled={quantity <= minQuantity} className="px-3 h-full text-gray-600 disabled:opacity-30">
                     −
                   </button>
                   <span className="w-8 text-center font-medium text-sm">{quantity}</span>
-                  <button onClick={() => handleQuantityChange(quantity + 1)} disabled={quantity >= maxQuantity} className="px-3 h-full text-gray-600 disabled:opacity-30">
+                  <button onClick={(e) => { e.stopPropagation(); handleQuantityChange(quantity + 1); }} disabled={quantity >= maxQuantity} className="px-3 h-full text-gray-600 disabled:opacity-30">
                     +
                   </button>
-                </div>
-
-                <Button onClick={handleAddToCart} className="flex-1 h-12 bg-blue-600 hover:bg-blue-700 text-white font-bold shadow-lg shadow-blue-200" disabled={(isB2BUser ? stockB2B : product.stock) === 0}>
+                </button>
+                
+                <Button onClick={() => setIsBottomSheetOpen(true)} className="h-12 px-6 bg-blue-600 hover:bg-blue-700 text-white font-bold shadow-lg shadow-blue-200" disabled={(isB2BUser ? stockB2B : product.stock) === 0}>
                   Comprar B2B
                 </Button>
               </div>
             </div> :
-      // B2C Mobile Footer
-      <div className="p-4 flex gap-3 items-center">
-              <div className="flex flex-col">
-                <span className="text-xs text-gray-500">Total</span>
-                <span className="text-xl font-bold text-gray-900">
-                  ${(product.precio_venta * quantity).toFixed(2)}
-                </span>
-              </div>
-              
-              <div className="flex items-center border border-gray-300 rounded-lg h-10 ml-auto mr-2">
-                <button onClick={() => handleQuantityChange(quantity - 1)} disabled={quantity <= 1} className="px-2 h-full text-gray-600 disabled:opacity-30">
-                  −
-                </button>
-                <span className="w-6 text-center font-medium text-sm">{quantity}</span>
-                <button onClick={() => handleQuantityChange(quantity + 1)} disabled={quantity >= (product.stock || 0)} className="px-2 h-full text-gray-600 disabled:opacity-30">
-                  +
-                </button>
-              </div>
+      null
+    }
+    </div>}
 
-              <Button onClick={handleAddToCart} className="flex-1 h-12 bg-gray-900 text-white font-bold rounded-xl" disabled={product.stock === 0}>
-                Agregar
-              </Button>
-            </div>}
-        </div>}
+      {/* Variant Drawer portal */}
+      <VariantDrawer />
+
+      {/* ProductBottomSheet for mobile */}
+      {isMobile && product && (
+        <ProductBottomSheet
+          product={{
+            id: product.id,
+            name: product.nombre,
+            price: product.precio_venta,
+            image: images[0] || '',
+            sku: product.sku,
+            storeId: product.store?.id,
+            storeName: product.store?.name,
+            storeWhatsapp: product.store?.whatsapp,
+            priceB2B: product.source_product?.precio_mayorista,
+            pvp: product.source_product?.precio_sugerido_venta,
+            moq: product.source_product?.moq,
+            stock: product.stock,
+            source_product_id: product.source_product?.id,
+          }}
+          isOpen={isBottomSheetOpen}
+          onClose={() => setIsBottomSheetOpen(false)}
+        />
+      )}
 
       {!isMobile && <Footer />}
     </div>;

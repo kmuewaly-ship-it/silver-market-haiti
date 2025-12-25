@@ -4,6 +4,7 @@ import { ShoppingCart, AlertCircle, Check, MessageCircle, ShieldCheck, TrendingU
 import { ProductB2BCard, CartItemB2B } from '@/types/b2b';
 import { Button } from '@/components/ui/button';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { ProductBottomSheet } from "@/components/products/ProductBottomSheet";
 import useVariantDrawerStore from '@/stores/useVariantDrawerStore';
 
 interface ProductCardB2BProps {
@@ -15,6 +16,7 @@ interface ProductCardB2BProps {
 
 const ProductCardB2B = ({ product, onAddToCart, cartItem, whatsappNumber = "50312345678" }: ProductCardB2BProps) => {
   const [cantidad, setCantidad] = useState(product.moq);
+  const [isSheetOpen, setIsSheetOpen] = useState(false);
   const isMobile = useIsMobile();
 
   const subtotal = cantidad * product.precio_b2b;
@@ -37,16 +39,21 @@ const ProductCardB2B = ({ product, onAddToCart, cartItem, whatsappNumber = "5031
 
   const handleAddToCart = (e: MouseEvent) => {
     e.stopPropagation();
-    useVariantDrawerStore.getState().open({
-      id: product.id,
-      sku: product.sku,
-      nombre: product.nombre,
-      images: [product.imagen_principal],
-      price: discountedPrice,
-      costB2B: discountedPrice,
-      moq: product.moq,
-      stock: product.stock_fisico,
-    });
+    if (isMobile) {
+      setIsSheetOpen(true);
+    } else {
+      useVariantDrawerStore.getState().open({
+        id: product.id,
+        sku: product.sku,
+        nombre: product.nombre,
+        images: [product.imagen_principal],
+        price: discountedPrice,
+        costB2B: discountedPrice,
+        moq: product.moq,
+        stock: product.stock_fisico,
+        source_product_id: product.source_product_id,
+      });
+    }
   };
 
   const handleWhatsApp = (e: MouseEvent) => {
@@ -213,6 +220,21 @@ const ProductCardB2B = ({ product, onAddToCart, cartItem, whatsappNumber = "5031
           )}
         </div>
       </div>
+      <ProductBottomSheet 
+        product={{
+          id: product.id,
+          name: product.nombre,
+          price: product.precio_b2b,
+          image: product.imagen_principal,
+          sku: product.sku,
+          priceB2B: product.precio_b2b,
+          pvp: product.precio_sugerido,
+          moq: product.moq,
+          stock: product.stock_fisico
+        }}
+        isOpen={isSheetOpen}
+        onClose={() => setIsSheetOpen(false)}
+      />
     </div>
   );
 };

@@ -35,6 +35,7 @@ const Index = () => {
       categoryId: product.source_product?.categoria_id,
       categoryName: product.source_product?.category?.name,
       categorySlug: product.source_product?.category?.slug,
+      source_product_id: product.source_product?.id,
     };
   };
 

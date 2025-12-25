@@ -1,13 +1,15 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import VariantSelector from './VariantSelector';
 import useVariantDrawerStore from '@/stores/useVariantDrawerStore';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
+import { UserRole } from '@/types/auth';
 import { useCart } from '@/hooks/useCart';
 import { useB2CCartSupabase } from '@/hooks/useB2CCartSupabase';
 import { useB2BCartSupabase } from '@/hooks/useB2BCartSupabase';
 import { useToast } from '@/hooks/use-toast';
+import { X, TrendingUp } from 'lucide-react';
 
 const VariantDrawer: React.FC = () => {
   const isMobile = useIsMobile();
@@ -17,10 +19,10 @@ const VariantDrawer: React.FC = () => {
   const [totalPrice, setTotalPrice] = useState(0);
 
   const { user, role } = useAuth();
-  const localCart = useCart();
-  const b2cCart = useB2CCartSupabase();
   const b2bCart = useB2BCartSupabase();
-  const toast = useToast();
+  const { toast } = useToast();
+
+  const isB2BUser = role === UserRole.SELLER || role === UserRole.ADMIN;
 
   // Prevent body scroll when drawer open
   useEffect(() => {
@@ -40,27 +42,45 @@ const VariantDrawer: React.FC = () => {
     }
   }, [isOpen]);
 
+  // Business calculator for B2B users
+  const businessSummary = useMemo(() => {
+    if (!isB2BUser || !product || totalQty === 0) return null;
+    const costB2B = product.costB2B || 0;
+    const pvp = product.pvp || product.price || 0;
+    const investment = costB2B * totalQty;
+    const estimatedRevenue = pvp * totalQty;
+    const estimatedProfit = estimatedRevenue - investment;
+    const profitPercentage = costB2B > 0 ? ((pvp - costB2B) / costB2B * 100).toFixed(1) : '0.0';
+    const profitPerUnit = pvp - costB2B;
+    return { investment, estimatedRevenue, estimatedProfit, profitPercentage, profitPerUnit };
+  }, [isB2BUser, product, totalQty]);
+
   const handleConfirm = async () => {
     if (!product) return;
 
+    // Validate MOQ for B2B
+    if (isB2BUser && totalQty < (product.moq || 1)) {
+      toast({ title: 'Cantidad mínima', description: `El pedido debe ser al menos ${product.moq || 1} unidades.`, variant: 'destructive' });
+      return;
+    }
+
     // If there are selected variants, add each selection
-    if (selections.length > 0) {
+    if (selections.length > 0 && totalQty > 0) {
       for (const sel of selections) {
         const qty = sel.quantity || 0;
         if (qty <= 0) continue;
 
-        if (role === 'seller') {
+        if (isB2BUser) {
           // Add to B2B supabase cart
           await b2bCart.addItem({
             productId: product.source_product_id || product.id,
             sku: product.sku || product.id,
             nombre: product.nombre,
             unitPrice: product.costB2B ?? product.price ?? 0,
-            quantity: Math.max(qty, product.moq || 1),
+            quantity: qty,
             moq: product.moq || 1,
             stockDisponible: product.stock || 0,
           });
-          toast.toast({ title: 'Producto agregado al pedido mayorista' });
         } else if (user && user.id) {
           // Authenticated client -> B2C supabase
           await b2cCart.addItem({
@@ -75,29 +95,31 @@ const VariantDrawer: React.FC = () => {
           });
         } else {
           // Guest -> local cart (zustand)
-          localCart.addItem({
-            id: product.id,
-            name: product.nombre,
-            price: product.price || 0,
-            image: product.images?.[0] || '',
-            sku: product.sku || product.id,
-          });
-          toast.toast({ title: 'Producto agregado' });
+          for (let i = 0; i < qty; i++) {
+            localCart.addItem({
+              id: product.id,
+              name: product.nombre,
+              price: product.price || 0,
+              image: product.images?.[0] || '',
+              sku: product.sku || product.id,
+            });
+          }
         }
       }
-    } else {
+      toast({ title: isB2BUser ? 'Agregado al pedido B2B' : 'Agregado al carrito', description: `${product.nombre} (${totalQty} uds)` });
+    } else if (totalQty > 0) {
       // No variant selections, fallback to single add
-      if (role === 'seller') {
+      if (isB2BUser) {
         await b2bCart.addItem({
           productId: product.source_product_id || product.id,
           sku: product.sku || product.id,
           nombre: product.nombre,
           unitPrice: product.costB2B ?? product.price ?? 0,
-          quantity: Math.max(1, product.moq || 1),
+          quantity: totalQty,
           moq: product.moq || 1,
           stockDisponible: product.stock || 0,
         });
-        toast.toast({ title: 'Producto agregado al pedido mayorista' });
+        toast({ title: 'Agregado al pedido B2B', description: `${product.nombre} (${totalQty} uds)` });
       } else if (user && user.id) {
         await b2cCart.addItem({
           sku: product.sku || product.id,
@@ -105,15 +127,18 @@ const VariantDrawer: React.FC = () => {
           price: product.price || 0,
           image: product.images?.[0] || undefined,
         });
+        toast({ title: 'Agregado al carrito' });
       } else {
-        localCart.addItem({
-          id: product.id,
-          name: product.nombre,
-          price: product.price || 0,
-          image: product.images?.[0] || '',
-          sku: product.sku || product.id,
-        });
-        toast.toast({ title: 'Producto agregado' });
+        for (let i = 0; i < totalQty; i++) {
+          localCart.addItem({
+            id: product.id,
+            name: product.nombre,
+            price: product.price || 0,
+            image: product.images?.[0] || '',
+            sku: product.sku || product.id,
+          });
+        }
+        toast({ title: 'Agregado al carrito' });
       }
     }
 
@@ -123,67 +148,144 @@ const VariantDrawer: React.FC = () => {
 
   if (!isOpen || !product) return null;
 
-  // Desktop Drawer styles (exact dimensions)
-  if (!isMobile) {
-    return (
-      <div className="fixed inset-0 z-50 flex" aria-hidden>
-        <div className="absolute inset-0 bg-black/40" onClick={() => close()} />
-        <aside
-          className="relative bg-white shadow-xl border-l"
-          style={{ width: 332, height: 945, right: 0 }}
-        >
-          <div className="p-4 h-full overflow-auto">
-            <h3 className="text-lg font-bold mb-2">Seleccionar variantes</h3>
-            <div className="mb-3 text-sm text-gray-600">{product.nombre}</div>
-            <VariantSelector productId={product.source_product_id || product.id} basePrice={product.price || 0} isB2B={role === 'seller'} onSelectionChange={(list, qty, price) => {
-              setSelections(list);
-              setTotalQty(qty);
-              setTotalPrice(price);
-            }} />
+  const displayPrice = isB2BUser ? (product.costB2B || 0) : (product.price || 0);
+  const pvpPrice = product.pvp || product.price || 0;
 
-            <div className="mt-4 sticky bottom-0 bg-white pt-4">
-              <div className="flex items-center justify-between mb-2">
-                <div>
-                  <div className="text-sm text-gray-500">Total</div>
-                  <div className="font-bold">${totalPrice.toFixed(2)}</div>
-                </div>
-                <div className="text-right">
-                  <div className="text-sm text-gray-500">{totalQty} uds</div>
-                  <Button onClick={handleConfirm} className="ml-3">Confirmar</Button>
-                </div>
+  // Render NOTHING on mobile - only desktop
+  if (isMobile) return null;
+
+  // Desktop Drawer (332px x 945px, slide-in from right)
+  return (
+      <div className="fixed inset-0 z-50 flex justify-end" style={{ pointerEvents: 'auto' }}>
+        {/* Overlay */}
+        <div 
+          className="absolute inset-0 bg-black/50 transition-opacity duration-300"
+          onClick={() => close()} 
+          style={{ animation: 'fadeIn 0.3s ease-out' }}
+        />
+        
+        {/* Drawer Panel - exact dimensions 332x945 */}
+        <aside
+          className="relative bg-white shadow-2xl border-l flex flex-col"
+          style={{ 
+            width: '332px', 
+            height: '945px',
+            maxHeight: '100vh',
+            animation: 'slideInRight 0.3s ease-out'
+          }}
+        >
+          {/* Header */}
+          <div className="flex items-center justify-between p-4 border-b">
+            <h3 className="text-lg font-bold text-gray-900">Seleccionar variantes</h3>
+            <button onClick={() => close()} className="p-1 hover:bg-gray-100 rounded-full transition">
+              <X className="w-5 h-5 text-gray-500" />
+            </button>
+          </div>
+
+          {/* Content - scrollable */}
+          <div className="flex-1 overflow-y-auto p-4 space-y-4">
+            {/* Product Info */}
+            <div className="flex gap-3 pb-3 border-b">
+              {product.images?.[0] && (
+                <img src={product.images[0]} alt={product.nombre} className="w-16 h-16 object-cover rounded-lg" />
+              )}
+              <div className="flex-1">
+                <h4 className="text-sm font-semibold text-gray-900 line-clamp-2">{product.nombre}</h4>
+                {isB2BUser ? (
+                  <div className="mt-1 flex items-center gap-2">
+                    <span className="text-lg font-bold text-blue-600">${displayPrice.toFixed(2)}</span>
+                    <span className="text-xs text-gray-500 line-through">${pvpPrice.toFixed(2)}</span>
+                    <span className="text-xs bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded">B2B</span>
+                  </div>
+                ) : (
+                  <div className="mt-1 text-lg font-bold text-gray-900">${displayPrice.toFixed(2)}</div>
+                )}
               </div>
             </div>
+
+            {/* Variant Selector */}
+            <VariantSelector 
+              productId={product.source_product_id || product.id} 
+              basePrice={displayPrice} 
+              isB2B={isB2BUser} 
+              onSelectionChange={(list, qty, price) => {
+                setSelections(list);
+                setTotalQty(qty);
+                setTotalPrice(price);
+              }} 
+            />
+
+            {/* B2B Investment Calculator */}
+            {isB2BUser && businessSummary && totalQty > 0 && (
+              <div className="p-3 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg border border-blue-200">
+                <h5 className="text-xs font-semibold text-blue-900 mb-2 flex items-center gap-1">
+                  <TrendingUp className="w-3.5 h-3.5" />
+                  Calculadora de Negocio
+                </h5>
+                <div className="space-y-2 text-xs">
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Inversión:</span>
+                    <span className="font-bold text-gray-900">${businessSummary.investment.toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Venta estimada (PVP):</span>
+                    <span className="font-bold text-green-600">${businessSummary.estimatedRevenue.toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between pt-2 border-t border-blue-200">
+                    <span className="text-gray-700 font-medium">Ganancia neta:</span>
+                    <span className="font-bold text-green-700 text-sm">+${businessSummary.estimatedProfit.toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Margen:</span>
+                    <span className="font-semibold text-blue-700">{businessSummary.profitPercentage}%</span>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Footer - sticky */}
+          <div className="p-4 border-t bg-white">
+            <div className="flex items-center justify-between mb-3">
+              <div>
+                <div className="text-xs text-gray-500">Total</div>
+                <div className="text-xl font-bold text-gray-900">${totalPrice.toFixed(2)}</div>
+              </div>
+              <div className="text-right">
+                <div className="text-xs text-gray-500">{totalQty} unidades</div>
+                {isB2BUser && product.moq && product.moq > 1 && (
+                  <div className="text-xs text-blue-600">MOQ: {product.moq}</div>
+                )}
+              </div>
+            </div>
+            <Button 
+              onClick={handleConfirm} 
+              className="w-full h-11 text-base font-semibold"
+              disabled={totalQty === 0 || (isB2BUser && totalQty < (product.moq || 1))}
+            >
+              {isB2BUser ? 'Agregar al Pedido B2B' : 'Agregar al Carrito'}
+            </Button>
           </div>
         </aside>
+
+        <style>{`
+          @keyframes slideInRight {
+            from {
+              transform: translateX(100%);
+              opacity: 0;
+            }
+            to {
+              transform: translateX(0);
+              opacity: 1;
+            }
+          }
+          @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+          }
+        `}</style>
       </div>
     );
-  }
-
-  // Mobile bottom sheet
-  return (
-    <div className="fixed inset-0 z-50 flex items-end">
-      <div className="absolute inset-0 bg-black/40" onClick={() => close()} />
-      <div className="w-full bg-white rounded-t-xl p-4 max-h-[70vh] overflow-auto">
-        <h3 className="text-lg font-bold mb-2">Seleccionar variantes</h3>
-        <div className="mb-3 text-sm text-gray-600">{product.nombre}</div>
-        <VariantSelector productId={product.source_product_id || product.id} basePrice={product.price || 0} isB2B={role === 'seller'} onSelectionChange={(list, qty, price) => {
-          setSelections(list);
-          setTotalQty(qty);
-          setTotalPrice(price);
-        }} />
-
-        <div className="mt-4">
-          <div className="flex items-center justify-between mb-2">
-            <div>
-              <div className="text-sm text-gray-500">Total</div>
-              <div className="font-bold">${totalPrice.toFixed(2)}</div>
-            </div>
-            <Button onClick={handleConfirm}>Confirmar</Button>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
 };
 
 export default VariantDrawer;
