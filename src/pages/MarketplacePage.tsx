@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { ShoppingCart, Store, Search, Package, Grid3X3, X } from "lucide-react";
+import useVariantDrawerStore from "@/stores/useVariantDrawerStore";
 
 const MarketplacePage = () => {
   const isMobile = useIsMobile();
@@ -72,18 +73,16 @@ const MarketplacePage = () => {
     const images = product.images as any;
     const mainImage = Array.isArray(images) && images.length > 0 ? images[0] : typeof images === 'string' ? images : '';
     
-    addToCart({
+    useVariantDrawerStore.getState().open({
       id: product.id,
-      name: product.nombre,
-      price: product.precio_venta,
-      priceB2B: product.precio_costo, // Use costo as B2B price
-      moq: 1, // Default MOQ for seller catalog items
-      stock: product.stock,
-      image: mainImage,
       sku: product.sku,
-      storeId: product.store?.id,
-      storeName: product.store?.name,
-      storeWhatsapp: product.store?.whatsapp || undefined
+      nombre: product.nombre,
+      images: mainImage ? [mainImage] : [],
+      price: product.precio_venta,
+      costB2B: product.precio_costo,
+      moq: 1,
+      stock: product.stock,
+      source_product_id: product.source_product?.id,
     });
   };
   const clearFilters = () => {

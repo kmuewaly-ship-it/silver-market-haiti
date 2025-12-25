@@ -5,7 +5,7 @@ import { useSmartCart } from "@/hooks/useSmartCart";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/useAuth";
 import { UserRole } from "@/types/auth";
-import { ProductBottomSheet } from "@/components/products/ProductBottomSheet";
+import useVariantDrawerStore from "@/stores/useVariantDrawerStore";
 
 interface Product {
   id: string;
@@ -46,7 +46,6 @@ interface ProductCardProps {
 
 const ProductCard = ({ product, b2bData }: ProductCardProps) => {
   const [isFavorite, setIsFavorite] = useState(false);
-  const [isSheetOpen, setIsSheetOpen] = useState(false);
   const { addToCart } = useSmartCart();
   const { user } = useAuth();
 
@@ -101,7 +100,16 @@ const ProductCard = ({ product, b2bData }: ProductCardProps) => {
   const handleAddToCart = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    setIsSheetOpen(true);
+    useVariantDrawerStore.getState().open({
+      id: product.id,
+      sku: product.sku,
+      nombre: product.name,
+      images: [product.image],
+      price: displayPrice,
+      costB2B: costB2B,
+      moq: moq,
+      stock: product.stock || 100,
+    });
   };
 
   return (
@@ -221,17 +229,6 @@ const ProductCard = ({ product, b2bData }: ProductCardProps) => {
         </div>
       </div>
     </div>
-    <ProductBottomSheet 
-      product={{
-        ...product,
-        priceB2B: costB2B,
-        pvp: pvp,
-        moq: moq,
-        stock: b2bData?.stock || product.stock
-      }} 
-      isOpen={isSheetOpen} 
-      onClose={() => setIsSheetOpen(false)} 
-    />
     </>
   );
 };

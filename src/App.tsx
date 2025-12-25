@@ -10,6 +10,7 @@ import { ToastContainer } from "@/components/ToastContainer";
 import { useToast } from "@/hooks/useToastNotification";
 import { ViewModeProvider } from "@/contexts/ViewModeContext";
 import { useCartMigration } from "@/hooks/useCartMigration";
+import VariantDrawer from "@/components/products/VariantDrawer";
 
 // Public Pages
 import Index from "./pages/Index";
@@ -79,6 +80,7 @@ const AppContent = () => {
       <ToastContainer toasts={toasts} onRemove={removeToast} />
       <Toaster />
       <Sonner />
+      <VariantDrawer />
       <Routes>
             {/* ========== PUBLIC ROUTES (B2C) ========== */}
             <Route path="/" element={<Index />} />
