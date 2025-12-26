@@ -263,41 +263,69 @@ const AccountPage = () => {
 
             {/* Right Column: Actions */}
             <div className="md:col-span-8 lg:col-span-9 space-y-8">
-                <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-                    <Link to="/mis-compras" className="flex flex-col items-start p-6 bg-white rounded-xl shadow-md hover:shadow-xl border border-transparent hover:border-blue-100 transition-all duration-300 group text-left">
-                        <div className="p-3 rounded-xl bg-blue-50 text-[#071d7f] group-hover:bg-[#071d7f] group-hover:text-white transition-colors mb-4 shadow-sm">
-                            <Package className="h-6 w-6" />
-                        </div>
-                        <h4 className="font-bold text-lg text-gray-900 group-hover:text-[#071d7f] transition-colors">Mis Compras</h4>
-                        <p className="text-sm text-gray-500 mt-2 leading-relaxed">
-                            Ver historial y estado de tus compras.
-                        </p>
-                    </Link>
-
+                <div className="grid gap-4 grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
                     <button 
-                        onClick={() => setShowAddresses(true)}
-                        className="flex flex-col items-start p-6 bg-white rounded-xl shadow-md hover:shadow-xl border border-transparent hover:border-blue-100 transition-all duration-300 group text-left"
+                        onClick={() => setShowSettings(true)}
+                        className="flex flex-col items-start p-4 bg-white rounded-xl shadow-md hover:shadow-xl border border-transparent hover:border-blue-100 transition-all duration-300 group text-left"
                     >
-                        <div className="p-3 rounded-xl bg-blue-50 text-[#071d7f] group-hover:bg-[#071d7f] group-hover:text-white transition-colors mb-4 shadow-sm">
-                            <MapPin className="h-6 w-6" />
+                        <div className="p-2 rounded-xl bg-blue-50 text-[#071d7f] group-hover:bg-[#071d7f] group-hover:text-white transition-colors mb-3 shadow-sm">
+                            <CreditCard className="h-5 w-5" />
                         </div>
-                        <h4 className="font-bold text-lg text-gray-900 group-hover:text-[#071d7f] transition-colors">Direcciones</h4>
-                        <p className="text-sm text-gray-500 mt-2 leading-relaxed">
-                            Gestiona tus direcciones de envío.
-                        </p>
+                        <h4 className="font-bold text-base text-gray-900 group-hover:text-[#071d7f] transition-colors">Métodos de Pago</h4>
+                        <p className="text-xs text-gray-500 mt-1 leading-relaxed">Gestiona tus tarjetas y cuentas.</p>
                     </button>
 
                     <button 
                         onClick={() => setShowSettings(true)}
-                        className="flex flex-col items-start p-6 bg-white rounded-xl shadow-md hover:shadow-xl border border-transparent hover:border-blue-100 transition-all duration-300 group text-left"
+                        className="flex flex-col items-start p-4 bg-white rounded-xl shadow-md hover:shadow-xl border border-transparent hover:border-blue-100 transition-all duration-300 group text-left"
                     >
-                        <div className="p-3 rounded-xl bg-blue-50 text-[#071d7f] group-hover:bg-[#071d7f] group-hover:text-white transition-colors mb-4 shadow-sm">
-                            <Settings className="h-6 w-6" />
+                        <div className="p-2 rounded-xl bg-blue-50 text-[#071d7f] group-hover:bg-[#071d7f] group-hover:text-white transition-colors mb-3 shadow-sm">
+                            <Bell className="h-5 w-5" />
                         </div>
-                        <h4 className="font-bold text-lg text-gray-900 group-hover:text-[#071d7f] transition-colors">Configuración</h4>
-                        <p className="text-sm text-gray-500 mt-2 leading-relaxed">
-                            Preferencias de cuenta y seguridad.
-                        </p>
+                        <h4 className="font-bold text-base text-gray-900 group-hover:text-[#071d7f] transition-colors">Notificaciones</h4>
+                        <p className="text-xs text-gray-500 mt-1 leading-relaxed">Configura alertas de pedidos.</p>
+                    </button>
+
+                    <button 
+                        onClick={() => setShowSettings(true)}
+                        className="flex flex-col items-start p-4 bg-white rounded-xl shadow-md hover:shadow-xl border border-transparent hover:border-blue-100 transition-all duration-300 group text-left"
+                    >
+                        <div className="p-2 rounded-xl bg-blue-50 text-[#071d7f] group-hover:bg-[#071d7f] group-hover:text-white transition-colors mb-3 shadow-sm">
+                            <Shield className="h-5 w-5" />
+                        </div>
+                        <h4 className="font-bold text-base text-gray-900 group-hover:text-[#071d7f] transition-colors">Seguridad</h4>
+                        <p className="text-xs text-gray-500 mt-1 leading-relaxed">Contraseña y accesos.</p>
+                    </button>
+
+                    <button 
+                        onClick={signOut}
+                        className="flex flex-col items-start p-4 bg-white rounded-xl shadow-md hover:shadow-xl border border-transparent hover:border-red-100 transition-all duration-300 group text-left bg-gradient-to-r hover:from-red-50 hover:to-white"
+                    >
+                        <div className="p-2 rounded-xl bg-red-50 text-red-600 group-hover:bg-red-600 group-hover:text-white transition-colors shadow-sm mb-3">
+                            <LogOut className="h-5 w-5" />
+                        </div>
+                        <h4 className="font-bold text-base text-gray-900 group-hover:text-red-700 transition-colors">Cerrar Sesión</h4>
+                        <p className="text-xs text-gray-500 mt-1">Salir de tu cuenta.</p>
+                    </button>
+
+                    {/* Additional Action Buttons */}
+                    <Link to="/mis-compras" className="flex flex-col items-start p-4 bg-white rounded-xl shadow-md hover:shadow-xl border border-transparent hover:border-blue-100 transition-all duration-300 group text-left">
+                        <div className="p-2 rounded-xl bg-blue-50 text-[#071d7f] group-hover:bg-[#071d7f] group-hover:text-white transition-colors mb-3 shadow-sm">
+                            <Package className="h-5 w-5" />
+                        </div>
+                        <h4 className="font-bold text-base text-gray-900 group-hover:text-[#071d7f] transition-colors">Mis Compras</h4>
+                        <p className="text-xs text-gray-500 mt-1 leading-relaxed">Ver tus órdenes.</p>
+                    </Link>
+
+                    <button 
+                        onClick={() => setShowAddresses(true)}
+                        className="flex flex-col items-start p-4 bg-white rounded-xl shadow-md hover:shadow-xl border border-transparent hover:border-blue-100 transition-all duration-300 group text-left"
+                    >
+                        <div className="p-2 rounded-xl bg-blue-50 text-[#071d7f] group-hover:bg-[#071d7f] group-hover:text-white transition-colors mb-3 shadow-sm">
+                            <MapPin className="h-5 w-5" />
+                        </div>
+                        <h4 className="font-bold text-base text-gray-900 group-hover:text-[#071d7f] transition-colors">Direcciones</h4>
+                        <p className="text-xs text-gray-500 mt-1 leading-relaxed">Gestiona tus direcciones.</p>
                     </button>
 
                     {/* Become a Seller Button - Only show for CLIENT role */}
@@ -305,7 +333,7 @@ const AccountPage = () => {
                       <button 
                         onClick={handleRequestSellerUpgrade}
                         disabled={isRequestingUpgrade || existingRequest?.status === 'pending' || existingRequest?.status === 'approved'}
-                        className={`flex flex-col items-start p-6 bg-white rounded-xl shadow-md hover:shadow-xl border border-transparent transition-all duration-300 group text-left ${
+                        className={`flex flex-col items-start p-4 bg-white rounded-xl shadow-md hover:shadow-xl border border-transparent transition-all duration-300 group text-left ${
                           existingRequest?.status === 'pending' 
                             ? 'bg-amber-50 border-amber-200 cursor-default' 
                             : existingRequest?.status === 'approved'
@@ -313,37 +341,19 @@ const AccountPage = () => {
                             : 'hover:border-indigo-100'
                         }`}
                       >
-                        <div className="flex items-center gap-4 w-full">
-                          <div className={`p-3 rounded-xl transition-colors shadow-sm ${
-                            existingRequest?.status === 'pending'
-                              ? 'bg-amber-100 text-amber-600'
-                              : existingRequest?.status === 'approved'
-                              ? 'bg-green-100 text-green-600'
-                              : 'bg-indigo-50 text-indigo-600 group-hover:bg-indigo-600 group-hover:text-white'
-                          }`}>
-                            {isRequestingUpgrade ? <Loader2 className="h-6 w-6 animate-spin" /> : getUpgradeButtonContent().props.children[0]}
-                          </div>
-                          {getUpgradeButtonContent().props.children[1]}
+                        <div className={`p-2 rounded-xl transition-colors shadow-sm mb-3 ${
+                          existingRequest?.status === 'pending'
+                            ? 'bg-amber-100 text-amber-600'
+                            : existingRequest?.status === 'approved'
+                            ? 'bg-green-100 text-green-600'
+                            : 'bg-indigo-50 text-indigo-600 group-hover:bg-indigo-600 group-hover:text-white'
+                        }`}>
+                          {isRequestingUpgrade ? <Loader2 className="h-5 w-5 animate-spin" /> : <Store className="h-5 w-5" />}
                         </div>
+                        <h4 className="font-bold text-base text-gray-900 group-hover:text-[#071d7f] transition-colors">Ser Vendedor</h4>
+                        <p className="text-xs text-gray-500 mt-1">Solicita vender.</p>
                       </button>
                     )}
-
-                    <button 
-                        onClick={signOut}
-                        className="flex flex-col items-start p-6 bg-white rounded-xl shadow-md hover:shadow-xl border border-transparent hover:border-red-100 transition-all duration-300 group text-left md:col-span-2 lg:col-span-3 bg-gradient-to-r hover:from-red-50 hover:to-white"
-                    >
-                        <div className="flex items-center gap-4 w-full">
-                            <div className="p-3 rounded-xl bg-red-50 text-red-600 group-hover:bg-red-600 group-hover:text-white transition-colors shadow-sm">
-                                <LogOut className="h-6 w-6" />
-                            </div>
-                            <div>
-                                <h4 className="font-bold text-lg text-gray-900 group-hover:text-red-700 transition-colors">Cerrar Sesión</h4>
-                                <p className="text-sm text-gray-500 mt-1">
-                                    Finalizar tu sesión actual.
-                                </p>
-                            </div>
-                        </div>
-                    </button>
                 </div>
             </div>
         </div>
