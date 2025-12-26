@@ -1,43 +1,69 @@
-import { StoreEditDialog } from "@/components/seller/StoreEditDialog";
-import { UserEditDialog } from "@/components/seller/UserEditDialog";
+import { useState } from "react";
 import { SellerLayout } from "@/components/seller/SellerLayout";
 import { useAuth } from "@/hooks/useAuth";
 import { useStoreByOwner } from "@/hooks/useStore";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
-import { Skeleton } from "@/components/ui/skeleton";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Textarea } from "@/components/ui/textarea";
 import {
-  User, Store, Mail, Calendar, Shield, LogOut,
-  Settings, CreditCard, Bell, Globe, Edit, MapPin, Phone, Loader2
+  User, Store, Mail, Calendar, Shield, LogOut, Settings, Bell, Edit, Phone, MessageCircle, Eye, EyeOff, CheckCircle, CreditCard, Package, Clock, Truck, XCircle, DollarSign, ShoppingCart, AlertCircle, ExternalLink, MapPin, RefreshCw, AlertTriangle, Ban, ChevronRight, Loader2, Save, Star, Users, BarChart3
 } from "lucide-react";
-import { useNavigate } from "react-router-dom";
-import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
 import { useQuery } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { useSellerStatuses } from "@/hooks/useSellerStatuses";
-import { SellerStatusUpload } from "@/components/seller/SellerStatusUpload";
 import { SellerStatusViewer } from "@/components/seller/SellerStatusViewer";
 import { useAdminBanners } from "@/hooks/useAdminBanners";
 import { SellerQuotesHistory } from "@/components/seller/SellerQuotesHistory";
+import { useBuyerOrders, useCancelBuyerOrder, BuyerOrder, BuyerOrderStatus, RefundStatus } from "@/hooks/useBuyerOrders";
+import { Skeleton } from "@/components/ui/skeleton";
+import { format } from "date-fns";
+import { es } from "date-fns/locale";
+import { Link } from "react-router-dom";
 
 const SellerAccountPage = () => {
-  const navigate = useNavigate();
   const { user, signOut } = useAuth();
   const { data: store, isLoading } = useStoreByOwner(user?.id);
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [isCreatingStore, setIsCreatingStore] = useState(false);
+  
+  // States for dialogs
+  const [activeTab, setActiveTab] = useState("informacion");
   const [showStatusViewer, setShowStatusViewer] = useState(false);
+  const [showChangePassword, setShowChangePassword] = useState(false);
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [statusFilter, setStatusFilter] = useState<BuyerOrderStatus | 'all'>('all');
+  const [selectedOrder, setSelectedOrder] = useState<BuyerOrder | null>(null);
+  const [showCancelDialog, setShowCancelDialog] = useState(false);
+  const [cancelReason, setCancelReason] = useState("");
+  const [requestRefund, setRequestRefund] = useState(false);
+  const [notificationSettings, setNotificationSettings] = useState({
+    emailNotifications: true,
+    orderNotifications: true,
+    promotionalEmails: false,
+    whatsappNotifications: true
+  });
+  
+  // Hooks for orders
+  const { data: orders, isLoading: ordersLoading } = useBuyerOrders(statusFilter === 'all' ? undefined : statusFilter);
+  const cancelOrder = useCancelBuyerOrder();
   
   // Statuses hook
-  const { statuses, uploadStatus, deleteStatus, loading: statusesLoading } = useSellerStatuses(store?.id || null);
+  const { statuses, deleteStatus } = useSellerStatuses(store?.id || null);
   
-  // Admin banners for sellers
+  // Admin banners
   const { banners: adminBanners } = useAdminBanners('sellers');
   const activeBanner = adminBanners.find(b => b.is_active);
 
@@ -62,64 +88,115 @@ const SellerAccountPage = () => {
 
   const isVerified = seller?.is_verified || false;
 
-  useEffect(() => {
-    console.log("SellerAccountPage - User:", user);
-    console.log("SellerAccountPage - Store:", store);
-    console.log("SellerAccountPage - IsLoading:", isLoading);
-  }, [user, store, isLoading]);
+  // Status config
+  const statusConfig: Record<BuyerOrderStatus, { label: string; color: string; icon: React.ElementType; bgColor: string }> = {
+    draft: { label: 'Borrador', color: 'text-gray-600', icon: Clock, bgColor: 'bg-gray-100' },
+    placed: { label: 'Confirmado', color: 'text-blue-600', icon: Package, bgColor: 'bg-blue-100' },
+    paid: { label: 'Pagado', color: 'text-amber-600', icon: CheckCircle, bgColor: 'bg-amber-100' },
+    shipped: { label: 'En camino', color: 'text-purple-600', icon: Truck, bgColor: 'bg-purple-100' },
+    delivered: { label: 'Entregado', color: 'text-green-600', icon: CheckCircle, bgColor: 'bg-green-100' },
+    cancelled: { label: 'Cancelado', color: 'text-red-600', icon: XCircle, bgColor: 'bg-red-100' },
+  };
 
-  const handleViewStore = () => {
-    console.log("Store data:", store);
-    if (store?.id) {
-      navigate(`/tienda/${store.id}`);
-    } else {
+  const refundStatusConfig: Record<string, { label: string; color: string; bgColor: string }> = {
+    none: { label: 'Sin reembolso', color: 'text-gray-600', bgColor: 'bg-gray-100' },
+    requested: { label: 'Solicitado', color: 'text-amber-600', bgColor: 'bg-amber-100' },
+    processing: { label: 'En proceso', color: 'text-blue-600', bgColor: 'bg-blue-100' },
+    completed: { label: 'Completado', color: 'text-green-600', bgColor: 'bg-green-100' },
+    rejected: { label: 'Rechazado', color: 'text-red-600', bgColor: 'bg-red-100' },
+  };
+
+  const carrierUrls: Record<string, string> = {
+    "DHL": "https://www.dhl.com/en/express/tracking.html?AWB=",
+    "FedEx": "https://www.fedex.com/fedextrack/?trknbr=",
+    "UPS": "https://www.ups.com/track?tracknum=",
+    "USPS": "https://tools.usps.com/go/TrackConfirmAction?tLabels=",
+  };
+
+  const getStatusBadge = (status: BuyerOrderStatus) => {
+    const config = statusConfig[status];
+    const Icon = config.icon;
+    return (
+      <Badge className={`${config.bgColor} ${config.color} gap-1`}>
+        <Icon className="h-3 w-3" />
+        {config.label}
+      </Badge>
+    );
+  };
+
+  const handleChangePassword = async () => {
+    if (!newPassword || !confirmPassword) {
       toast({
         title: "Error",
-        description: "No se encontró la información de la tienda. Por favor contacta a soporte.",
+        description: "Por favor completa todos los campos",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      toast({
+        title: "Error",
+        description: "Las contraseñas no coinciden",
+        variant: "destructive",
+      });
+      return;
+    }
+    try {
+      const { error } = await supabase.auth.updateUser({ password: newPassword });
+      if (error) throw error;
+      toast({
+        title: "Éxito",
+        description: "Contraseña actualizada correctamente",
+      });
+      setShowChangePassword(false);
+      setNewPassword("");
+      setConfirmPassword("");
+    } catch (e) {
+      console.error(e);
+      toast({
+        title: "Error",
+        description: "No se pudo actualizar la contraseña",
         variant: "destructive",
       });
     }
   };
 
-  const handleCreateStore = async () => {
-    if (!user) return;
-    setIsCreatingStore(true);
-    try {
-        const slug = (user.name || "tienda")
-            .toLowerCase()
-            .replace(/[^a-z0-9]+/g, "-")
-            .replace(/(^-|-$)/g, "") + "-" + Math.floor(Math.random() * 1000);
+  const handleSaveNotifications = () => {
+    toast({
+      title: "Éxito",
+      description: "Configuración de notificaciones actualizada",
+    });
+    setShowNotifications(false);
+  };
 
-        const { error } = await supabase.from("stores").insert({
-            owner_user_id: user.id,
-            name: user.name || "Mi Tienda",
-            slug: slug,
-            is_active: true
-        });
-        
-        if (error) throw error;
-        
-        toast({ title: "Tienda creada", description: "Tu tienda ha sido inicializada correctamente." });
-        queryClient.invalidateQueries({ queryKey: ["store"] });
-    } catch (e) {
-        console.error(e);
-        toast({ title: "Error", description: "No se pudo crear la tienda", variant: "destructive" });
-    } finally {
-        setIsCreatingStore(false);
-    }
+  const handleCancelClick = (order: BuyerOrder) => {
+    setSelectedOrder(order);
+    setShowCancelDialog(true);
+    setCancelReason("");
+    setRequestRefund(false);
+  };
+
+  const handleConfirmCancel = async () => {
+    if (!selectedOrder || !cancelReason.trim()) return;
+
+    await cancelOrder.mutateAsync({
+      orderId: selectedOrder.id,
+      reason: cancelReason,
+      requestRefund: requestRefund && selectedOrder.status === 'paid',
+    });
+
+    setShowCancelDialog(false);
+    setSelectedOrder(null);
   };
 
   if (isLoading) {
     return (
       <SellerLayout>
-        <div className="p-8 space-y-8 w-full animate-pulse">
-          <div className="h-64 bg-gray-200 rounded-xl w-full" />
-          <div className="grid gap-8 md:grid-cols-3">
-            <div className="h-96 bg-gray-200 rounded-xl" />
-            <div className="col-span-2 space-y-6">
-                <div className="h-64 bg-gray-200 rounded-xl" />
-                <div className="h-64 bg-gray-200 rounded-xl" />
-            </div>
+        <div className="min-h-screen bg-gray-50/50 animate-pulse p-8">
+          <div className="h-64 bg-gray-200 rounded-xl w-full mb-8" />
+          <div className="space-y-4">
+            <div className="h-12 bg-gray-200 rounded w-full" />
+            <div className="h-96 bg-gray-200 rounded w-full" />
           </div>
         </div>
       </SellerLayout>
@@ -128,307 +205,683 @@ const SellerAccountPage = () => {
 
   return (
     <SellerLayout>
-
       <div className="min-h-screen bg-gray-50/50 pb-12 w-full font-sans">
-        {/* Modern Hero Section */}
-        <div className="relative h-64 w-full overflow-hidden group">
-            {activeBanner ? (
-              <>
-                <img 
-                  src={activeBanner.image_url} 
-                  alt={activeBanner.title}
-                  className="absolute inset-0 w-full h-full object-cover"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
-              </>
-            ) : (
-              <>
-                <div className="absolute inset-0 bg-gradient-to-br from-[#071d7f] via-[#0a2a9f] to-[#051560]" />
-                <div className="absolute inset-0 opacity-10 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] mix-blend-overlay" />
-              </>
-            )}
+        {/* Main Content */}
+        <div className="container mx-auto px-4 md:px-6 mt-0">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
             
-            {/* Decorative circles */}
-            <div className="absolute top-0 right-0 -mt-20 -mr-20 w-96 h-96 bg-white/5 rounded-full blur-3xl" />
-            <div className="absolute bottom-0 left-0 -mb-20 -ml-20 w-72 h-72 bg-blue-400/10 rounded-full blur-2xl" />
+            {/* Sticky Navigation Bar */}
+            <div className="fixed top-24 left-0 right-0 z-40 w-full bg-white border-b shadow-md">
+              <div className="container mx-auto px-2 md:px-6 py-0">
+                <TabsList className="grid w-full grid-cols-5 gap-0 bg-transparent rounded-none p-0 h-auto border-b-0 mb-0">
+                  <TabsTrigger 
+                    value="informacion" 
+                    className="flex flex-col items-center justify-center gap-0.5 text-[10px] md:text-xs px-1 md:px-3 py-1 md:py-1.5 rounded-none border-b-2 border-transparent data-[state=active]:border-b-[#071d7f] data-[state=active]:bg-[#071d7f] data-[state=active]:text-white data-[state=active]:px-0.5 md:data-[state=active]:px-1.5"
+                  >
+                    <User className="h-3 w-3 md:h-4 md:w-4" />
+                    <span className="hidden sm:inline">Información</span>
+                    <span className="sm:hidden">Info</span>
+                  </TabsTrigger>
+                  <TabsTrigger 
+                    value="compras" 
+                    className="flex flex-col items-center justify-center gap-0.5 text-[10px] md:text-xs px-1 md:px-3 py-1 md:py-1.5 rounded-none border-b-2 border-transparent data-[state=active]:border-b-[#071d7f] data-[state=active]:bg-[#071d7f] data-[state=active]:text-white data-[state=active]:px-0.5 md:data-[state=active]:px-1.5"
+                  >
+                    <Package className="h-3 w-3 md:h-4 md:w-4" />
+                    <span className="hidden sm:inline">Mis Compras</span>
+                    <span className="sm:hidden">Compras</span>
+                  </TabsTrigger>
+                  <TabsTrigger 
+                    value="tienda" 
+                    className="flex flex-col items-center justify-center gap-0.5 text-[10px] md:text-xs px-1 md:px-3 py-1 md:py-1.5 rounded-none border-b-2 border-transparent data-[state=active]:border-b-[#071d7f] data-[state=active]:bg-[#071d7f] data-[state=active]:text-white data-[state=active]:px-0.5 md:data-[state=active]:px-1.5"
+                  >
+                    <Store className="h-3 w-3 md:h-4 md:w-4" />
+                    <span className="hidden sm:inline">Mi Tienda</span>
+                    <span className="sm:hidden">Tienda</span>
+                  </TabsTrigger>
+                  <TabsTrigger 
+                    value="pedidos" 
+                    className="flex flex-col items-center justify-center gap-0.5 text-[10px] md:text-xs px-1 md:px-3 py-1 md:py-1.5 rounded-none border-b-2 border-transparent data-[state=active]:border-b-[#071d7f] data-[state=active]:bg-[#071d7f] data-[state=active]:text-white data-[state=active]:px-0.5 md:data-[state=active]:px-1.5"
+                  >
+                    <CreditCard className="h-3 w-3 md:h-4 md:w-4" />
+                    <span className="hidden sm:inline">Pedidos</span>
+                    <span className="sm:hidden">Pedidos</span>
+                  </TabsTrigger>
+                  <TabsTrigger 
+                    value="configuracion" 
+                    className="flex flex-col items-center justify-center gap-0.5 text-[10px] md:text-xs px-1 md:px-3 py-1 md:py-1.5 rounded-none border-b-2 border-transparent data-[state=active]:border-b-[#071d7f] data-[state=active]:bg-[#071d7f] data-[state=active]:text-white data-[state=active]:px-0.5 md:data-[state=active]:px-1.5"
+                  >
+                    <Settings className="h-3 w-3 md:h-4 md:w-4" />
+                    <span className="hidden sm:inline">Configuración</span>
+                    <span className="sm:hidden">Config</span>
+                  </TabsTrigger>
+                </TabsList>
+              </div>
+            </div>
 
-            <div className="container mx-auto px-6 h-full flex items-end pb-8 relative z-10">
-                <div className="flex flex-col md:flex-row md:items-end gap-6 w-full">
-                    {/* Status Upload & Avatar */}
-                    <div className="flex items-end gap-4">
-                        {store?.id && (
-                            <SellerStatusUpload 
-                                onUpload={uploadStatus}
-                                hasActiveStatus={statuses.length > 0}
-                            />
-                        )}
-                        <div 
-                            className={`relative cursor-pointer ${statuses.length > 0 ? 'ring-4 ring-primary ring-offset-2 ring-offset-[#071d7f] rounded-full' : ''}`}
-                            onClick={() => statuses.length > 0 && setShowStatusViewer(true)}
-                        >
-                            <div className="absolute -inset-1 bg-gradient-to-r from-blue-400 to-cyan-300 rounded-full blur opacity-30 group-hover:opacity-60 transition duration-500"></div>
-                            <Avatar className="h-32 w-32 border-4 border-white shadow-2xl relative">
-                                <AvatarImage src={store?.logo || ""} alt={store?.name} className="object-cover" />
-                                <AvatarFallback className="text-4xl font-bold bg-white text-[#071d7f]">
-                                    {store?.name?.substring(0, 2).toUpperCase() || user?.name?.substring(0, 2).toUpperCase() || "ST"}
-                                </AvatarFallback>
-                            </Avatar>
-                            <div className="absolute bottom-2 right-2 h-6 w-6 bg-green-500 border-4 border-white rounded-full" title="Online"></div>
-                            {statuses.length > 0 && (
-                                <div className="absolute -top-1 -right-1 bg-primary text-primary-foreground text-xs rounded-full h-5 w-5 flex items-center justify-center font-bold">
-                                    {statuses.length}
-                                </div>
+            {/* Tab Contents */}
+            <div className="mt-40">
+              
+              {/* Información Tab */}
+              <TabsContent value="informacion" className="space-y-6 md:space-y-8 mt-0">
+                <div className="w-full max-w-2xl mx-auto">
+                  <Card className="shadow-lg border-none overflow-hidden">
+                    {/* Header */}
+                    <CardHeader className="bg-gradient-to-r from-[#071d7f] to-blue-600 text-white pb-8">
+                      <div className="flex items-start justify-between">
+                        <div className="flex items-center gap-4">
+                          <Avatar className="h-16 w-16 border-4 border-white">
+                            <AvatarImage src={user?.avatar_url || ""} />
+                            <AvatarFallback className="bg-blue-100 text-[#071d7f] font-bold text-lg">
+                              {user?.name?.charAt(0)?.toUpperCase()}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div>
+                            <h2 className="text-2xl font-bold">{user?.name || "Mi Cuenta"}</h2>
+                            {isVerified && (
+                              <Badge className="mt-2 bg-green-100 text-green-700 hover:bg-green-200">
+                                Vendedor Verificado
+                              </Badge>
                             )}
+                          </div>
                         </div>
-                    </div>
+                        <Button 
+                          variant="outline" 
+                          className="bg-white text-[#071d7f] hover:bg-blue-50 border-white p-2"
+                          size="sm"
+                        >
+                          <Edit className="h-5 w-5" />
+                        </Button>
+                      </div>
+                    </CardHeader>
 
-                    <div className="mb-2 text-white flex-1">
-                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                            <div>
-                                <div className="flex items-center gap-3">
-                                    <h1 className="text-4xl font-bold tracking-tight text-white drop-shadow-md">
-                                        {store?.name || user?.name || "Mi Tienda"}
-                                    </h1>
-                                    {store?.is_active && (
-                                        <Badge className="bg-green-500/20 text-green-100 hover:bg-green-500/30 border-green-500/50 backdrop-blur-sm">
-                                            Verificado
-                                        </Badge>
-                                    )}
-                                </div>
-                                <p className="text-blue-100/80 flex items-center gap-2 mt-2 text-lg">
-                                    <MapPin className="h-4 w-4" />
-                                    <span>
-                                        {store?.city && store?.country 
-                                          ? `${store.city}, ${store.country}` 
-                                          : store?.country || "Ubicación no configurada"}
-                                    </span>
-                                </p>
-                            </div>
-
-                            <div className="flex gap-3">
-                                {store?.id ? (
-                                <Button
-                                    onClick={handleViewStore}
-                                    className="bg-[#071d7f] hover:bg-[#071d7f]/90 text-white shadow-lg shadow-blue-900/20 border-none"
-                                >
-                                    Ver Tienda
-                                </Button>
-                                ) : (
-                                <Button
-                                    onClick={handleCreateStore}
-                                    disabled={isCreatingStore}
-                                    className="bg-green-600 hover:bg-green-700 text-white shadow-lg border-none"
-                                >
-                                    {isCreatingStore ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-                                    Activar Tienda
-                                </Button>
-                                )}
-                            </div>
+                    <CardContent className="p-6 md:p-8">
+                      {/* Contact Information */}
+                      <div className="space-y-4 mb-8 pb-8 border-b">
+                        <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wider flex items-center gap-2">
+                          <Mail className="h-4 w-4 text-[#071d7f]" />
+                          Información de Contacto
+                        </h3>
+                        <div className="space-y-3">
+                          <div className="flex justify-between items-start py-3 border-b border-gray-100 last:border-b-0">
+                            <span className="text-gray-600 text-sm">Correo Electrónico</span>
+                            <span className="font-semibold text-gray-900">{user?.email}</span>
+                          </div>
+                          <div className="flex justify-between items-start py-3 border-b border-gray-100 last:border-b-0">
+                            <span className="text-gray-600 text-sm flex items-center gap-1">
+                              <Phone className="h-4 w-4" />
+                              Teléfono
+                            </span>
+                            <span className="font-semibold text-gray-900">+1 234 567 8900</span>
+                          </div>
+                          <div className="flex justify-between items-start py-3 border-b border-gray-100 last:border-b-0">
+                            <span className="text-gray-600 text-sm flex items-center gap-1">
+                              <MessageCircle className="h-4 w-4 text-green-600" />
+                              WhatsApp
+                            </span>
+                            <span className="font-semibold text-gray-900">+1 234 567 8900</span>
+                          </div>
+                          <div className="flex justify-between items-start py-3 border-b border-gray-100 last:border-b-0">
+                            <span className="text-gray-600 text-sm">Nombre Completo</span>
+                            <span className="font-semibold text-gray-900">{user?.name || "N/A"}</span>
+                          </div>
                         </div>
-                    </div>
+                      </div>
+
+                      {/* Account Information */}
+                      <div className="space-y-4 mb-8 pb-8 border-b">
+                        <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wider flex items-center gap-2">
+                          <Shield className="h-4 w-4 text-[#071d7f]" />
+                          Información de la Cuenta
+                        </h3>
+                        <div className="space-y-3">
+                          <div className="flex justify-between items-start py-3 border-b border-gray-100 last:border-b-0">
+                            <span className="text-gray-600 text-sm flex items-center gap-1">
+                              <Calendar className="h-4 w-4" />
+                              Miembro Desde
+                            </span>
+                            <span className="font-semibold text-gray-900">
+                              {new Date(user?.created_at || '').toLocaleDateString('es-ES', { 
+                                year: 'numeric', 
+                                month: 'long', 
+                                day: 'numeric' 
+                              })}
+                            </span>
+                          </div>
+                          <div className="flex justify-between items-start py-3 border-b border-gray-100 last:border-b-0">
+                            <span className="text-gray-600 text-sm flex items-center gap-1">
+                              <CheckCircle className="h-4 w-4 text-green-600" />
+                              Estado de Cuenta
+                            </span>
+                            <span className="font-semibold text-green-600">Activa ✓</span>
+                          </div>
+                          <div className="flex justify-between items-start py-3 border-b border-gray-100 last:border-b-0">
+                            <span className="text-gray-600 text-sm">ID de Usuario</span>
+                            <span className="font-mono text-gray-900 text-xs font-semibold">{user?.id.slice(0, 8)}...</span>
+                          </div>
+                          <div className="flex justify-between items-start py-3 border-b border-gray-100 last:border-b-0">
+                            <span className="text-gray-600 text-sm flex items-center gap-1">
+                              <Store className="h-4 w-4" />
+                              Tipo de Usuario
+                            </span>
+                            <span className="font-semibold text-[#071d7f]">Vendedor</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Quick Actions */}
+                      <div className="flex gap-3 justify-start">
+                        <button 
+                          onClick={() => setShowChangePassword(true)}
+                          className="p-3 bg-white rounded-lg shadow-md hover:shadow-lg border border-blue-100 hover:border-blue-300 transition-all duration-300 text-[#071d7f] hover:bg-blue-50"
+                          title="Cambiar Contraseña"
+                        >
+                          <Shield className="h-5 w-5" />
+                        </button>
+
+                        <button 
+                          onClick={() => setShowNotifications(true)}
+                          className="p-3 bg-white rounded-lg shadow-md hover:shadow-lg border border-blue-100 hover:border-blue-300 transition-all duration-300 text-[#071d7f] hover:bg-blue-50"
+                          title="Notificaciones"
+                        >
+                          <Bell className="h-5 w-5" />
+                        </button>
+
+                        <button 
+                          onClick={signOut}
+                          className="p-3 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 rounded-lg shadow-md hover:shadow-lg border border-red-600 transition-all duration-300 text-white"
+                          title="Cerrar Sesión"
+                        >
+                          <LogOut className="h-5 w-5" />
+                        </button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+              </TabsContent>
+
+              {/* Mis Compras Tab */}
+              <TabsContent value="compras" className="space-y-6 mt-0">
+                {/* Stats Cards - Individual Cards in Grid */}
+                <div className="grid grid-cols-6 gap-3">
+                  {/* Pendientes Card */}
+                  <Card className="bg-blue-50 border-blue-200">
+                    <CardContent className="p-3 flex flex-col items-center justify-center">
+                      <div className="flex flex-col items-center gap-0.5 mb-1">
+                        <Clock className="h-4 w-4 text-blue-500" />
+                        <span className="text-[9px] font-medium text-muted-foreground text-center">Pendiente</span>
+                      </div>
+                      <div className="text-lg font-bold text-blue-500">
+                        {orders?.filter(o => o.status === 'placed').length || 0}
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* Pagados Card */}
+                  <Card className="bg-amber-50 border-amber-200">
+                    <CardContent className="p-3 flex flex-col items-center justify-center">
+                      <div className="flex flex-col items-center gap-0.5 mb-1">
+                        <CheckCircle className="h-4 w-4 text-amber-500" />
+                        <span className="text-[9px] font-medium text-muted-foreground text-center">Pagados</span>
+                      </div>
+                      <div className="text-lg font-bold text-amber-500">
+                        {orders?.filter(o => o.status === 'paid').length || 0}
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* En Camino Card */}
+                  <Card className="bg-purple-50 border-purple-200">
+                    <CardContent className="p-3 flex flex-col items-center justify-center">
+                      <div className="flex flex-col items-center gap-0.5 mb-1">
+                        <Truck className="h-4 w-4 text-purple-500" />
+                        <span className="text-[9px] font-medium text-muted-foreground text-center">Camino</span>
+                      </div>
+                      <div className="text-lg font-bold text-purple-500">
+                        {orders?.filter(o => o.status === 'shipped').length || 0}
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* Entregados Card */}
+                  <Card className="bg-green-50 border-green-200">
+                    <CardContent className="p-3 flex flex-col items-center justify-center">
+                      <div className="flex flex-col items-center gap-0.5 mb-1">
+                        <CheckCircle className="h-4 w-4 text-green-500" />
+                        <span className="text-[9px] font-medium text-muted-foreground text-center">Entregado</span>
+                      </div>
+                      <div className="text-lg font-bold text-green-500">
+                        {orders?.filter(o => o.status === 'delivered').length || 0}
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* Cancelados Card */}
+                  <Card className="bg-red-50 border-red-200">
+                    <CardContent className="p-3 flex flex-col items-center justify-center">
+                      <div className="flex flex-col items-center gap-0.5 mb-1">
+                        <XCircle className="h-4 w-4 text-red-500" />
+                        <span className="text-[9px] font-medium text-muted-foreground text-center">Cancelado</span>
+                      </div>
+                      <div className="text-lg font-bold text-red-500">
+                        {orders?.filter(o => o.status === 'cancelled').length || 0}
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* Total Pagado Card */}
+                  <Card className="bg-gradient-to-br from-green-50 to-emerald-50 border-green-200">
+                    <CardContent className="p-3 flex flex-col items-center justify-center">
+                      <div className="flex flex-col items-center gap-0.5 mb-1">
+                        <DollarSign className="h-4 w-4 text-green-600" />
+                        <span className="text-[9px] font-medium text-muted-foreground text-center">Total Pago</span>
+                      </div>
+                      <div className="text-lg font-bold text-green-600">
+                        ${(orders?.filter(o => ['paid', 'shipped', 'delivered'].includes(o.status))
+                          .reduce((sum, o) => sum + o.total_amount, 0) || 0).toFixed(2)}
+                      </div>
+                    </CardContent>
+                  </Card>
                 </div>
 
-            </div>
-        </div>
+                {/* Filters */}
+                <Card className="bg-card border-border">
+                  <CardContent className="pt-6">
+                    <Tabs value={statusFilter} onValueChange={(v) => setStatusFilter(v as BuyerOrderStatus | 'all')}>
+                      <TabsList className="grid grid-cols-4 md:grid-cols-7 gap-1">
+                        <TabsTrigger value="all" className="text-xs">Todos</TabsTrigger>
+                        <TabsTrigger value="placed" className="text-xs">Pendientes</TabsTrigger>
+                        <TabsTrigger value="paid" className="text-xs">Pagados</TabsTrigger>
+                        <TabsTrigger value="shipped" className="text-xs">En Camino</TabsTrigger>
+                        <TabsTrigger value="delivered" className="text-xs hidden md:block">Entregados</TabsTrigger>
+                        <TabsTrigger value="cancelled" className="text-xs hidden md:block">Cancelados</TabsTrigger>
+                      </TabsList>
+                    </Tabs>
+                  </CardContent>
+                </Card>
 
-        <div className="container mx-auto px-6 mt-8">
-          <div className="grid gap-8 md:grid-cols-12">
+                {/* Orders List */}
+                <div className="space-y-4">
+                  {ordersLoading ? (
+                    <Card className="p-8">
+                      <div className="flex items-center justify-center">
+                        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                      </div>
+                    </Card>
+                  ) : orders && orders.length === 0 ? (
+                    <Card className="p-8 text-center">
+                      <ShoppingCart className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                      <h3 className="text-lg font-semibold mb-2">No tienes compras aún</h3>
+                      <p className="text-muted-foreground mb-4">Explora el catálogo B2B y realiza tu primera compra</p>
+                      <Button asChild>
+                        <Link to="/seller/adquisicion-lotes">Ir al Catálogo B2B</Link>
+                      </Button>
+                    </Card>
+                  ) : orders && orders.length > 0 ? (
+                    orders.map((order) => {
+                      const status = statusConfig[order.status];
+                      const Icon = status.icon;
+                      const trackingNumber = order.metadata?.tracking_number;
+                      const carrier = order.metadata?.carrier;
+                      
+                      return (
+                        <Card 
+                          key={order.id} 
+                          className={`cursor-pointer hover:shadow-lg transition-all duration-300 border-l-4 ${
+                            order.status === 'shipped' ? 'border-l-purple-500' : 
+                            order.status === 'delivered' ? 'border-l-green-500' : 
+                            order.status === 'paid' ? 'border-l-amber-500' : 
+                            order.status === 'placed' ? 'border-l-blue-500' : 
+                            order.status === 'cancelled' ? 'border-l-red-500' : 'border-l-gray-300'
+                          }`}
+                          onClick={() => setSelectedOrder(order)}
+                        >
+                          <CardContent className="p-4">
+                            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                              <div className="flex items-start gap-4 flex-1">
+                                <div className={`p-3 rounded-xl ${status.bgColor} ${status.color} shrink-0`}>
+                                  <Icon className="h-5 w-5" />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    <span className="font-semibold">Pedido #{order.id.slice(0, 8).toUpperCase()}</span>
+                                    {getStatusBadge(order.status)}
+                                  </div>
+                                  <p className="text-sm text-muted-foreground mt-1">
+                                    {format(new Date(order.created_at), "d 'de' MMMM, yyyy", { locale: es })}
+                                  </p>
+                                  <p className="text-sm text-muted-foreground">
+                                    {order.order_items_b2b?.length || 0} productos • {order.total_quantity} unidades
+                                  </p>
+                                </div>
+                              </div>
+                              
+                              <div className="flex items-center justify-between md:justify-end gap-4">
+                                <div className="text-right">
+                                  <p className="font-bold text-lg">${order.total_amount.toLocaleString()}</p>
+                                  <p className="text-xs text-muted-foreground">{order.currency}</p>
+                                </div>
+                                <ChevronRight className="h-5 w-5 text-muted-foreground" />
+                              </div>
+                            </div>
 
-            {/* Left Column: User Profile (Sticky) */}
-            <div className="md:col-span-4 lg:col-span-3 space-y-6">
-                <Card className="shadow-lg border-none overflow-hidden sticky top-28 group hover:shadow-xl transition-all duration-300">
-                  {/* User Banner */}
-                  <div className="h-24 relative overflow-hidden">
-                    {user?.banner_url ? (
-                      <img 
-                        src={user.banner_url} 
-                        alt="Banner de perfil" 
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <div className="w-full h-full bg-gradient-to-r from-gray-100 to-gray-200" />
-                    )}
-                  </div>
-                  <div className="px-6 -mt-12 flex justify-center">
-                     <Avatar className="h-24 w-24 border-4 border-white shadow-md">
-                        {user?.avatar_url && (
-                          <AvatarImage src={user.avatar_url} alt={user?.name || "Usuario"} />
-                        )}
-                        <AvatarFallback className="bg-gray-100 text-gray-600 text-xl">
-                            {user?.name ? user.name.substring(0, 2).toUpperCase() : <User className="h-10 w-10" />}
-                        </AvatarFallback>
-                    </Avatar>
-                  </div>
+                            {/* Tracking Info */}
+                            {order.status === 'shipped' && trackingNumber && (
+                              <div className="mt-4 pt-4 border-t flex items-center gap-2 text-sm">
+                                <Truck className="h-4 w-4 text-purple-600" />
+                                <span className="text-muted-foreground">Rastreo:</span>
+                                <span className="font-medium text-purple-600">{trackingNumber}</span>
+                                {carrier && <span className="text-muted-foreground">({carrier})</span>}
+                              </div>
+                            )}
+                          </CardContent>
+                        </Card>
+                      );
+                    })
+                  ) : null}
+                </div>
+              </TabsContent>
 
-                  <CardContent className="pt-4 text-center space-y-6 pb-8">
-                    <div>
-                        <h3 className="font-bold text-xl text-gray-900">{user?.name || "Usuario"}</h3>
-                        <p className="text-sm text-gray-500 font-medium">{user?.email}</p>
-                        <div className="flex items-center justify-center gap-2 mt-3">
-                          <Badge variant="secondary" className="px-4 py-1 bg-blue-50 text-[#071d7f] hover:bg-blue-100 transition-colors">
-                              {user?.role || "Vendedor"}
-                          </Badge>
-                          {isVerified && (
-                            <Badge className="bg-green-100 text-green-700 hover:bg-green-200">
-                              Verificado
-                            </Badge>
+              {/* Mi Tienda Tab */}
+              <TabsContent value="tienda" className="space-y-6 mt-0">
+                {/* Store Header */}
+                <Card className="shadow-lg border-none overflow-hidden">
+                  <CardHeader className="bg-gradient-to-r from-[#071d7f] to-blue-600 text-white pb-8">
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-center gap-4 flex-1">
+                        <div className="w-20 h-20 bg-white rounded-xl flex items-center justify-center overflow-hidden border-4 border-white">
+                          {store?.logo ? (
+                            <img src={store.logo} alt={store?.name} className="w-full h-full object-cover" />
+                          ) : (
+                            <Store className="h-10 w-10 text-[#071d7f]" />
                           )}
                         </div>
+                        <div>
+                          <h2 className="text-2xl font-bold">{store?.name || "Mi Tienda"}</h2>
+                          <p className="text-blue-100 text-sm mt-1">{store?.description || "Descripción de tu tienda"}</p>
+                        </div>
+                      </div>
+                      <Button variant="outline" className="bg-white text-[#071d7f] hover:bg-blue-50 border-white">
+                        <Edit className="h-4 w-4 mr-2" />
+                        Editar
+                      </Button>
                     </div>
+                  </CardHeader>
 
-                    {/* Edit User Button */}
-                    <UserEditDialog user={user} isVerified={isVerified} />
-
-                    <Separator className="bg-gray-100" />
-
-                    <div className="space-y-4 text-left">
-                        <div className="flex items-center gap-3 text-sm group/item p-2 rounded-lg hover:bg-gray-50 transition-colors">
-                            <div className="p-2 bg-blue-50 text-[#071d7f] rounded-full">
-                                <Calendar className="h-4 w-4" />
-                            </div>
-                            <div>
-                                <p className="text-xs text-gray-500">Miembro desde</p>
-                                <p className="font-medium text-gray-700">
-                                    {user?.created_at ? new Date(user.created_at).toLocaleDateString() : '-'}
-                                </p>
-                            </div>
-                        </div>
-                        <div className="flex items-center gap-3 text-sm group/item p-2 rounded-lg hover:bg-gray-50 transition-colors">
-                            <div className="p-2 bg-blue-50 text-[#071d7f] rounded-full">
-                                <Shield className="h-4 w-4" />
-                            </div>
-                            <div>
-                                <p className="text-xs text-gray-500">Estado de cuenta</p>
-                                <p className="font-medium text-green-600">Activa y Segura</p>
-                            </div>
-                        </div>
+                  <CardContent className="p-6">
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                      <div className="flex flex-col items-center justify-center p-4 bg-blue-50 rounded-lg">
+                        <Package className="h-6 w-6 text-blue-600 mb-2" />
+                        <p className="text-xs text-muted-foreground text-center">Productos</p>
+                        <p className="text-2xl font-bold text-blue-600">0</p>
+                      </div>
+                      <div className="flex flex-col items-center justify-center p-4 bg-green-50 rounded-lg">
+                        <ShoppingCart className="h-6 w-6 text-green-600 mb-2" />
+                        <p className="text-xs text-muted-foreground text-center">Ventas</p>
+                        <p className="text-2xl font-bold text-green-600">0</p>
+                      </div>
+                      <div className="flex flex-col items-center justify-center p-4 bg-amber-50 rounded-lg">
+                        <Star className="h-6 w-6 text-amber-600 mb-2" />
+                        <p className="text-xs text-muted-foreground text-center">Calificación</p>
+                        <p className="text-2xl font-bold text-amber-600">4.8</p>
+                      </div>
+                      <div className="flex flex-col items-center justify-center p-4 bg-purple-50 rounded-lg">
+                        <Users className="h-6 w-6 text-purple-600 mb-2" />
+                        <p className="text-xs text-muted-foreground text-center">Seguidores</p>
+                        <p className="text-2xl font-bold text-purple-600">0</p>
+                      </div>
                     </div>
                   </CardContent>
                 </Card>
-            </div>
 
-            {/* Right Column: Store Details & Settings */}
-            <div className="md:col-span-8 lg:col-span-9 space-y-8">
-
-                {/* Store Information Card */}
-                <Card className="shadow-lg border-none overflow-hidden hover:shadow-xl transition-all duration-300">
-                    <CardHeader className="border-b bg-white px-8 py-6">
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <CardTitle className="text-2xl font-bold text-[#071d7f] flex items-center gap-3">
-                                    <Store className="h-6 w-6" />
-                                    Información de la Tienda
-                                </CardTitle>
-                                <CardDescription className="mt-2 text-base">
-                                    Gestiona la información pública de tu negocio.
-                                </CardDescription>
-                            </div>
-                            <StoreEditDialog store={store} />
-                        </div>
+                {/* Store Management Sections */}
+                <div className="grid md:grid-cols-2 gap-6">
+                  {/* Store Information */}
+                  <Card className="shadow-lg border-none">
+                    <CardHeader className="bg-gradient-to-r from-blue-50 to-blue-100 border-b">
+                      <h3 className="text-lg font-bold text-[#071d7f] flex items-center gap-2">
+                        <Mail className="h-5 w-5" />
+                        Información de la Tienda
+                      </h3>
                     </CardHeader>
-                    <CardContent className="p-8">
-                        <div className="grid md:grid-cols-2 gap-8">
-                            <div className="space-y-6">
-                                <div className="space-y-2">
-                                    <label className="text-sm font-semibold text-gray-500 uppercase tracking-wider">Nombre Comercial</label>
-                                    <div className="p-4 bg-gray-50 rounded-lg border border-gray-100 text-gray-900 font-medium text-lg">
-                                        {store?.name || "No configurado"}
-                                    </div>
-                                    <p className="text-xs text-amber-600 flex items-center gap-1 mt-1">
-                                        <span className="inline-block w-1.5 h-1.5 rounded-full bg-amber-500"></span>
-                                        Modificable una vez al año
-                                    </p>
-                                </div>
-
-                                <div className="space-y-2">
-                                    <label className="text-sm font-semibold text-gray-500 uppercase tracking-wider">Estado Operativo</label>
-                                    <div className="flex items-center gap-3 p-4 bg-gray-50 rounded-lg border border-gray-100">
-                                        <div className={`h-3 w-3 rounded-full ${store?.is_active ? "bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.5)]" : "bg-yellow-500"}`} />
-                                        <span className="font-medium text-gray-900">{store?.is_active ? "Tienda Activa" : "Tienda Inactiva"}</span>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div className="space-y-2">
-                                <label className="text-sm font-semibold text-gray-500 uppercase tracking-wider">Descripción Pública</label>
-                                <div className="p-4 bg-gray-50 rounded-lg border border-gray-100 h-full min-h-[140px]">
-                                    <p className="text-gray-700 leading-relaxed">
-                                        {store?.description || "Sin descripción. Añade una descripción detallada para mejorar tu posicionamiento y atraer más clientes."}
-                                    </p>
-                                </div>
-                            </div>
-                        </div>
+                    <CardContent className="p-6 space-y-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="store-name" className="text-sm font-medium">Nombre de la Tienda</Label>
+                        <Input id="store-name" placeholder={store?.name || "Nombre de tu tienda"} className="border-gray-300" />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="store-description" className="text-sm font-medium">Descripción</Label>
+                        <Textarea id="store-description" placeholder={store?.description || "Describe tu tienda"} rows={3} className="border-gray-300" />
+                      </div>
+                      <Button className="w-full bg-[#071d7f] hover:bg-[#071d7f]/90">
+                        <Save className="h-4 w-4 mr-2" />
+                        Guardar Cambios
+                      </Button>
                     </CardContent>
-                </Card>
+                  </Card>
 
-                {/* Quotes History */}
-                <SellerQuotesHistory />
-
-                {/* Settings & Actions Grid */}
-                <div>
-                    <h3 className="text-xl font-bold text-[#071d7f] mb-6 flex items-center gap-2">
+                  {/* Store Settings */}
+                  <Card className="shadow-lg border-none">
+                    <CardHeader className="bg-gradient-to-r from-green-50 to-green-100 border-b">
+                      <h3 className="text-lg font-bold text-green-700 flex items-center gap-2">
                         <Settings className="h-5 w-5" />
-                        Panel de Control
-                    </h3>
-                    <div className="grid gap-4 grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+                        Configuración de Tienda
+                      </h3>
+                    </CardHeader>
+                    <CardContent className="p-6 space-y-4">
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                          <Label className="cursor-pointer flex items-center gap-2 flex-1">
+                            <Checkbox defaultChecked />
+                            <span className="text-sm font-medium">Tienda Abierta</span>
+                          </Label>
+                        </div>
+                        <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                          <Label className="cursor-pointer flex items-center gap-2 flex-1">
+                            <Checkbox defaultChecked />
+                            <span className="text-sm font-medium">Permitir comentarios</span>
+                          </Label>
+                        </div>
+                        <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                          <Label className="cursor-pointer flex items-center gap-2 flex-1">
+                            <Checkbox />
+                            <span className="text-sm font-medium">Mostrar stock</span>
+                          </Label>
+                        </div>
+                      </div>
+                      <Button className="w-full bg-green-600 hover:bg-green-700">
+                        <CheckCircle className="h-4 w-4 mr-2" />
+                        Actualizar Configuración
+                      </Button>
+                    </CardContent>
+                  </Card>
 
-                        {/* Action Card 1 */}
-                        <button className="flex flex-col items-start p-4 bg-white rounded-xl shadow-md hover:shadow-xl border border-transparent hover:border-blue-100 transition-all duration-300 group text-left">
-                            <div className="p-2 rounded-xl bg-blue-50 text-[#071d7f] group-hover:bg-[#071d7f] group-hover:text-white transition-colors mb-3 shadow-sm">
-                                <CreditCard className="h-5 w-5" />
-                            </div>
-                            <h4 className="font-bold text-base text-gray-900 group-hover:text-[#071d7f] transition-colors">Métodos de Pago</h4>
-                            <p className="text-xs text-gray-500 mt-1 leading-relaxed">
-                                Gestiona tus tarjetas y cuentas.
-                            </p>
-                        </button>
+                  {/* Policies */}
+                  <Card className="shadow-lg border-none md:col-span-2">
+                    <CardHeader className="bg-gradient-to-r from-amber-50 to-amber-100 border-b">
+                      <h3 className="text-lg font-bold text-amber-700 flex items-center gap-2">
+                        <Shield className="h-5 w-5" />
+                        Políticas de la Tienda
+                      </h3>
+                    </CardHeader>
+                    <CardContent className="p-6 space-y-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="return-policy" className="text-sm font-medium">Política de Devoluciones</Label>
+                        <Textarea id="return-policy" placeholder="Describe tu política de devoluciones" rows={2} className="border-gray-300" />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="shipping-policy" className="text-sm font-medium">Política de Envío</Label>
+                        <Textarea id="shipping-policy" placeholder="Describe tu política de envío" rows={2} className="border-gray-300" />
+                      </div>
+                      <Button className="w-full bg-amber-600 hover:bg-amber-700">
+                        <Save className="h-4 w-4 mr-2" />
+                        Guardar Políticas
+                      </Button>
+                    </CardContent>
+                  </Card>
 
-                        {/* Action Card 2 */}
-                        <button className="flex flex-col items-start p-4 bg-white rounded-xl shadow-md hover:shadow-xl border border-transparent hover:border-blue-100 transition-all duration-300 group text-left">
-                            <div className="p-2 rounded-xl bg-blue-50 text-[#071d7f] group-hover:bg-[#071d7f] group-hover:text-white transition-colors mb-3 shadow-sm">
-                                <Bell className="h-5 w-5" />
-                            </div>
-                            <h4 className="font-bold text-base text-gray-900 group-hover:text-[#071d7f] transition-colors">Notificaciones</h4>
-                            <p className="text-xs text-gray-500 mt-1 leading-relaxed">
-                                Configura alertas de pedidos.
-                            </p>
-                        </button>
-
-                        {/* Action Card 3 */}
-                        <button className="flex flex-col items-start p-4 bg-white rounded-xl shadow-md hover:shadow-xl border border-transparent hover:border-blue-100 transition-all duration-300 group text-left">
-                            <div className="p-2 rounded-xl bg-blue-50 text-[#071d7f] group-hover:bg-[#071d7f] group-hover:text-white transition-colors mb-3 shadow-sm">
-                                <Shield className="h-5 w-5" />
-                            </div>
-                            <h4 className="font-bold text-base text-gray-900 group-hover:text-[#071d7f] transition-colors">Seguridad</h4>
-                            <p className="text-xs text-gray-500 mt-1 leading-relaxed">
-                                Contraseña y accesos.
-                            </p>
-                        </button>
-
-                        {/* Logout Card */}
-                        <button
-                            onClick={signOut}
-                            className="flex flex-col items-start p-4 bg-white rounded-xl shadow-md hover:shadow-xl border border-transparent hover:border-red-100 transition-all duration-300 group text-left bg-gradient-to-r hover:from-red-50 hover:to-white"
-                        >
-                            <div className="flex flex-col items-start w-full">
-                                <div className="p-2 rounded-xl bg-red-50 text-red-600 group-hover:bg-red-600 group-hover:text-white transition-colors shadow-sm mb-3">
-                                    <LogOut className="h-5 w-5" />
-                                </div>
-                                <div>
-                                    <h4 className="font-bold text-base text-gray-900 group-hover:text-red-700 transition-colors">Cerrar Sesión</h4>
-                                    <p className="text-xs text-gray-500 mt-1">
-                                        Salir de tu cuenta.
-                                    </p>
-                                </div>
-                            </div>
-                        </button>
-                    </div>
+                  {/* Bank Information */}
+                  <Card className="shadow-lg border-none md:col-span-2">
+                    <CardHeader className="bg-gradient-to-r from-purple-50 to-purple-100 border-b">
+                      <h3 className="text-lg font-bold text-purple-700 flex items-center gap-2">
+                        <DollarSign className="h-5 w-5" />
+                        Información Bancaria
+                      </h3>
+                    </CardHeader>
+                    <CardContent className="p-6 space-y-4">
+                      <div className="grid md:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="bank-name" className="text-sm font-medium">Banco</Label>
+                          <Input id="bank-name" placeholder="Nombre del banco" className="border-gray-300" />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="account-type" className="text-sm font-medium">Tipo de Cuenta</Label>
+                          <select className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm">
+                            <option>Seleccionar tipo</option>
+                            <option>Ahorros</option>
+                            <option>Corriente</option>
+                          </select>
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="account-number" className="text-sm font-medium">Número de Cuenta</Label>
+                          <Input id="account-number" placeholder="Número de cuenta" className="border-gray-300" type="password" />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="account-holder" className="text-sm font-medium">Titular de la Cuenta</Label>
+                          <Input id="account-holder" placeholder="Nombre del titular" className="border-gray-300" />
+                        </div>
+                      </div>
+                      <Button className="w-full bg-purple-600 hover:bg-purple-700">
+                        <Save className="h-4 w-4 mr-2" />
+                        Guardar Información Bancaria
+                      </Button>
+                    </CardContent>
+                  </Card>
                 </div>
+
+                {/* Store Stats */}
+                <Card className="shadow-lg border-none">
+                  <CardHeader className="bg-gradient-to-r from-[#071d7f] to-blue-600 text-white">
+                    <h3 className="text-lg font-bold flex items-center gap-2">
+                      <BarChart3 className="h-5 w-5" />
+                      Estadísticas de la Tienda
+                    </h3>
+                  </CardHeader>
+                  <CardContent className="p-6">
+                    <div className="grid md:grid-cols-4 gap-4">
+                      <div className="p-4 border rounded-lg">
+                        <p className="text-sm text-muted-foreground">Vistas Esta Semana</p>
+                        <p className="text-3xl font-bold text-[#071d7f] mt-2">0</p>
+                      </div>
+                      <div className="p-4 border rounded-lg">
+                        <p className="text-sm text-muted-foreground">Conversión</p>
+                        <p className="text-3xl font-bold text-green-600 mt-2">0%</p>
+                      </div>
+                      <div className="p-4 border rounded-lg">
+                        <p className="text-sm text-muted-foreground">Ingresos Este Mes</p>
+                        <p className="text-3xl font-bold text-blue-600 mt-2">$0</p>
+                      </div>
+                      <div className="p-4 border rounded-lg">
+                        <p className="text-sm text-muted-foreground">Productos Destacados</p>
+                        <p className="text-3xl font-bold text-amber-600 mt-2">0</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              {/* Pedidos Tab */}
+              <TabsContent value="pedidos" className="space-y-6 mt-0">
+                <Card className="shadow-lg border-none">
+                  <CardHeader className="bg-gradient-to-r from-[#071d7f] to-blue-600 text-white">
+                    <h3 className="text-xl font-bold flex items-center gap-2">
+                      <CreditCard className="h-5 w-5" />
+                      Pedidos Recibidos
+                    </h3>
+                  </CardHeader>
+                  <CardContent className="p-6">
+                    <div className="text-center py-12 text-gray-500">
+                      <p className="text-lg">No hay pedidos para mostrar</p>
+                      <p className="text-sm mt-2">Los pedidos aparecerán aquí cuando recibas ventas</p>
+                    </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              {/* Configuración Tab */}
+              <TabsContent value="configuracion" className="space-y-6 mt-0">
+                <Card className="shadow-lg border-none">
+                  <CardHeader className="bg-gradient-to-r from-[#071d7f] to-blue-600 text-white">
+                    <h3 className="text-xl font-bold flex items-center gap-2">
+                      <Settings className="h-5 w-5" />
+                      Panel de Control
+                    </h3>
+                  </CardHeader>
+                  <CardContent className="p-6">
+                    <div className="grid gap-4 grid-cols-2 md:grid-cols-3">
+                      {/* Payment Methods Card */}
+                      <button className="flex flex-col items-start p-4 bg-white rounded-xl shadow-md hover:shadow-xl border border-transparent hover:border-blue-100 transition-all duration-300 group text-left">
+                        <div className="p-2 rounded-xl bg-blue-50 text-[#071d7f] group-hover:bg-[#071d7f] group-hover:text-white transition-colors mb-3 shadow-sm">
+                          <CreditCard className="h-5 w-5" />
+                        </div>
+                        <h4 className="font-bold text-base text-gray-900 group-hover:text-[#071d7f] transition-colors">Métodos de Pago</h4>
+                        <p className="text-xs text-gray-500 mt-1 leading-relaxed">
+                          Gestiona tus tarjetas y cuentas.
+                        </p>
+                      </button>
+
+                      {/* Notifications Card */}
+                      <button 
+                        onClick={() => setShowNotifications(true)}
+                        className="flex flex-col items-start p-4 bg-white rounded-xl shadow-md hover:shadow-xl border border-transparent hover:border-blue-100 transition-all duration-300 group text-left">
+                        <div className="p-2 rounded-xl bg-blue-50 text-[#071d7f] group-hover:bg-[#071d7f] group-hover:text-white transition-colors mb-3 shadow-sm">
+                          <Bell className="h-5 w-5" />
+                        </div>
+                        <h4 className="font-bold text-base text-gray-900 group-hover:text-[#071d7f] transition-colors">Notificaciones</h4>
+                        <p className="text-xs text-gray-500 mt-1 leading-relaxed">
+                          Configura alertas de pedidos.
+                        </p>
+                      </button>
+
+                      {/* Security Card */}
+                      <button 
+                        onClick={() => setShowChangePassword(true)}
+                        className="flex flex-col items-start p-4 bg-white rounded-xl shadow-md hover:shadow-xl border border-transparent hover:border-blue-100 transition-all duration-300 group text-left">
+                        <div className="p-2 rounded-xl bg-blue-50 text-[#071d7f] group-hover:bg-[#071d7f] group-hover:text-white transition-colors mb-3 shadow-sm">
+                          <Shield className="h-5 w-5" />
+                        </div>
+                        <h4 className="font-bold text-base text-gray-900 group-hover:text-[#071d7f] transition-colors">Seguridad</h4>
+                        <p className="text-xs text-gray-500 mt-1 leading-relaxed">
+                          Contraseña y accesos.
+                        </p>
+                      </button>
+
+                      {/* Logout Card */}
+                      <button
+                        onClick={signOut}
+                        className="flex flex-col items-start p-4 bg-white rounded-xl shadow-md hover:shadow-xl border border-transparent hover:border-red-100 transition-all duration-300 group text-left bg-gradient-to-r hover:from-red-50 hover:to-white md:col-span-3"
+                      >
+                        <div className="flex flex-col items-start w-full">
+                          <div className="p-2 rounded-xl bg-red-50 text-red-600 group-hover:bg-red-600 group-hover:text-white transition-colors shadow-sm mb-3">
+                            <LogOut className="h-5 w-5" />
+                          </div>
+                          <div>
+                            <h4 className="font-bold text-base text-gray-900 group-hover:text-red-700 transition-colors">Cerrar Sesión</h4>
+                            <p className="text-xs text-gray-500 mt-1">
+                              Salir de tu cuenta.
+                            </p>
+                          </div>
+                        </div>
+                      </button>
+                    </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
             </div>
-          </div>
+          </Tabs>
         </div>
       </div>
-      
+
       {/* Status Viewer Modal */}
       {showStatusViewer && statuses.length > 0 && (
         <SellerStatusViewer
@@ -440,6 +893,383 @@ const SellerAccountPage = () => {
           storeLogo={store?.logo}
         />
       )}
+
+      {/* Order Detail Dialog */}
+      <Dialog open={!!selectedOrder && !showCancelDialog} onOpenChange={(open) => !open && setSelectedOrder(null)}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          {selectedOrder && (
+            <>
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-3">
+                  <div className={`p-2 rounded-lg ${statusConfig[selectedOrder.status].bgColor} ${statusConfig[selectedOrder.status].color}`}>
+                    {(() => {
+                      const Icon = statusConfig[selectedOrder.status].icon;
+                      return <Icon className="h-5 w-5" />;
+                    })()}
+                  </div>
+                  <div>
+                    <span className="block">Pedido #{selectedOrder.id.slice(0, 8).toUpperCase()}</span>
+                    {getStatusBadge(selectedOrder.status)}
+                  </div>
+                </DialogTitle>
+              </DialogHeader>
+
+              <div className="space-y-6 mt-4">
+                {/* Tracking Section */}
+                {(selectedOrder.status === 'shipped' || selectedOrder.status === 'delivered') && selectedOrder.metadata?.tracking_number && (
+                  <Card className="bg-gradient-to-br from-purple-50 to-blue-50 border-purple-200">
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-base flex items-center gap-2 text-purple-700">
+                        <Truck className="h-5 w-5" />
+                        Seguimiento de Envío
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm text-muted-foreground">Paquetería</p>
+                          <p className="font-semibold text-purple-900">{selectedOrder.metadata.carrier || "No especificada"}</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-sm text-muted-foreground">Número de Guía</p>
+                          <p className="font-mono font-semibold text-purple-900">{selectedOrder.metadata.tracking_number}</p>
+                        </div>
+                      </div>
+                      
+                      {selectedOrder.metadata.estimated_delivery && (
+                        <div className="flex items-center gap-2 text-sm bg-white/60 p-2 rounded-lg">
+                          <Calendar className="h-4 w-4 text-purple-600" />
+                          <span className="text-muted-foreground">Entrega estimada:</span>
+                          <span className="font-medium">{selectedOrder.metadata.estimated_delivery}</span>
+                        </div>
+                      )}
+
+                      {selectedOrder.metadata.carrier && carrierUrls[selectedOrder.metadata.carrier] && (
+                        <a 
+                          href={`${carrierUrls[selectedOrder.metadata.carrier]}${selectedOrder.metadata.tracking_number}`}
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="flex items-center justify-center gap-2 w-full bg-purple-600 hover:bg-purple-700 text-white py-3 px-4 rounded-lg font-medium transition-colors"
+                        >
+                          <MapPin className="h-4 w-4" />
+                          Rastrear en {selectedOrder.metadata.carrier}
+                          <ExternalLink className="h-4 w-4" />
+                        </a>
+                      )}
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* Timeline */}
+                <div className="space-y-3">
+                  <h4 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide">Estado del Pedido</h4>
+                  <div className="relative">
+                    {['placed', 'paid', 'shipped', 'delivered'].map((step, index) => {
+                      const stepStatus = statusConfig[step as BuyerOrderStatus];
+                      const StepIcon = stepStatus.icon;
+                      const isCompleted = ['placed', 'paid', 'shipped', 'delivered'].indexOf(selectedOrder.status) >= index;
+                      const isCurrent = selectedOrder.status === step;
+
+                      return (
+                        <div key={step} className="flex items-center gap-3 mb-3 last:mb-0">
+                          <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0
+                            ${isCompleted ? stepStatus.bgColor : 'bg-gray-100'}
+                            ${isCurrent ? 'ring-2 ring-offset-2 ring-primary' : ''}`}>
+                            <StepIcon className={`h-4 w-4 ${isCompleted ? stepStatus.color : 'text-gray-400'}`} />
+                          </div>
+                          <div className="flex-1">
+                            <p className={`font-medium ${isCompleted ? 'text-foreground' : 'text-muted-foreground'}`}>
+                              {stepStatus.label}
+                            </p>
+                          </div>
+                          {isCompleted && <CheckCircle className="h-4 w-4 text-green-500" />}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Order Items */}
+                <div className="space-y-3">
+                  <h4 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide">
+                    Productos ({selectedOrder.order_items_b2b?.length || 0})
+                  </h4>
+                  <div className="space-y-2 max-h-48 overflow-y-auto">
+                    {selectedOrder.order_items_b2b?.map((item) => (
+                      <div key={item.id} className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
+                        <div className="flex-1">
+                          <p className="font-medium text-sm">{item.nombre}</p>
+                          <p className="text-xs text-muted-foreground">Cant: {item.cantidad}</p>
+                        </div>
+                        <p className="font-semibold">${item.subtotal.toLocaleString()}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Total */}
+                <div className="border-t pt-4">
+                  <div className="flex justify-between items-center">
+                    <span className="text-lg font-semibold">Total</span>
+                    <span className="text-2xl font-bold text-primary">
+                      {selectedOrder.currency} ${selectedOrder.total_amount.toLocaleString()}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Cancellation Info */}
+                {selectedOrder.status === 'cancelled' && (
+                  <Card className="bg-red-50 border-red-200">
+                    <CardContent className="pt-4 space-y-3">
+                      <div className="flex items-center gap-2">
+                        <Ban className="h-5 w-5 text-red-600" />
+                        <span className="font-medium text-red-700">Pedido Cancelado</span>
+                      </div>
+                      {selectedOrder.metadata?.cancellation_reason && (
+                        <p className="text-sm text-red-600">
+                          <span className="font-medium">Motivo:</span> {selectedOrder.metadata.cancellation_reason}
+                        </p>
+                      )}
+                      {selectedOrder.metadata?.refund_status && selectedOrder.metadata.refund_status !== 'none' && (
+                        <div className="border-t border-red-200 pt-3">
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm font-medium text-red-700">Estado del Reembolso</span>
+                            <Badge className={`${refundStatusConfig[selectedOrder.metadata.refund_status as RefundStatus].bgColor} ${refundStatusConfig[selectedOrder.metadata.refund_status as RefundStatus].color}`}>
+                              {refundStatusConfig[selectedOrder.metadata.refund_status as RefundStatus].label}
+                            </Badge>
+                          </div>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* Actions */}
+                <div className="flex flex-col gap-3">
+                  <Button asChild className="w-full">
+                    <Link to="/seller/adquisicion-lotes">
+                      <RefreshCw className="h-4 w-4 mr-2" />
+                      Volver a Comprar
+                    </Link>
+                  </Button>
+
+                  {['placed', 'paid'].includes(selectedOrder.status) && (
+                    <Button 
+                      variant="outline" 
+                      className="w-full border-red-300 text-red-600 hover:bg-red-50"
+                      onClick={() => handleCancelClick(selectedOrder)}
+                    >
+                      <XCircle className="h-4 w-4 mr-2" />
+                      Cancelar Pedido
+                    </Button>
+                  )}
+                </div>
+              </div>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Change Password Dialog */}
+      <Dialog open={showChangePassword} onOpenChange={setShowChangePassword}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle className="text-[#071d7f]">Cambiar Contraseña</DialogTitle>
+            <DialogDescription>
+              Ingresa tu nueva contraseña segura
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="new-password">Nueva Contraseña</Label>
+              <div className="relative">
+                <Input
+                  id="new-password"
+                  type={showNewPassword ? "text" : "password"}
+                  placeholder="Ingresa tu nueva contraseña"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  className="pr-10"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowNewPassword(!showNewPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                >
+                  {showNewPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="confirm-password">Confirmar Contraseña</Label>
+              <div className="relative">
+                <Input
+                  id="confirm-password"
+                  type={showConfirmPassword ? "text" : "password"}
+                  placeholder="Confirma tu nueva contraseña"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  className="pr-10"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                >
+                  {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
+            </div>
+          </div>
+          <div className="flex gap-3 justify-end">
+            <Button variant="outline" onClick={() => setShowChangePassword(false)}>
+              Cancelar
+            </Button>
+            <Button onClick={handleChangePassword} className="bg-[#071d7f] hover:bg-[#071d7f]/90">
+              Actualizar Contraseña
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Notifications Settings Dialog */}
+      <Dialog open={showNotifications} onOpenChange={setShowNotifications}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle className="text-[#071d7f]">Configurar Notificaciones</DialogTitle>
+            <DialogDescription>
+              Personaliza cómo deseas recibir actualizaciones
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="flex items-center space-x-3 p-3 rounded-lg hover:bg-gray-50 cursor-pointer">
+              <Checkbox
+                id="email-notifications"
+                checked={notificationSettings.emailNotifications}
+                onCheckedChange={(checked) =>
+                  setNotificationSettings({...notificationSettings, emailNotifications: checked as boolean})
+                }
+              />
+              <Label htmlFor="email-notifications" className="cursor-pointer flex-1">
+                <p className="font-medium text-gray-900">Notificaciones por Correo</p>
+                <p className="text-xs text-gray-500">Recibe actualizaciones en tu correo</p>
+              </Label>
+            </div>
+            <div className="flex items-center space-x-3 p-3 rounded-lg hover:bg-gray-50 cursor-pointer">
+              <Checkbox
+                id="order-notifications"
+                checked={notificationSettings.orderNotifications}
+                onCheckedChange={(checked) =>
+                  setNotificationSettings({...notificationSettings, orderNotifications: checked as boolean})
+                }
+              />
+              <Label htmlFor="order-notifications" className="cursor-pointer flex-1">
+                <p className="font-medium text-gray-900">Notificaciones de Pedidos</p>
+                <p className="text-xs text-gray-500">Alertas cuando haya nuevos pedidos</p>
+              </Label>
+            </div>
+            <div className="flex items-center space-x-3 p-3 rounded-lg hover:bg-gray-50 cursor-pointer">
+              <Checkbox
+                id="whatsapp-notifications"
+                checked={notificationSettings.whatsappNotifications}
+                onCheckedChange={(checked) =>
+                  setNotificationSettings({...notificationSettings, whatsappNotifications: checked as boolean})
+                }
+              />
+              <Label htmlFor="whatsapp-notifications" className="cursor-pointer flex-1">
+                <p className="font-medium text-gray-900">Notificaciones por WhatsApp</p>
+                <p className="text-xs text-gray-500">Alertas rápidas en WhatsApp</p>
+              </Label>
+            </div>
+            <div className="flex items-center space-x-3 p-3 rounded-lg hover:bg-gray-50 cursor-pointer">
+              <Checkbox
+                id="promotional-emails"
+                checked={notificationSettings.promotionalEmails}
+                onCheckedChange={(checked) =>
+                  setNotificationSettings({...notificationSettings, promotionalEmails: checked as boolean})
+                }
+              />
+              <Label htmlFor="promotional-emails" className="cursor-pointer flex-1">
+                <p className="font-medium text-gray-900">Emails Promocionales</p>
+                <p className="text-xs text-gray-500">Ofertas y promociones especiales</p>
+              </Label>
+            </div>
+          </div>
+          <div className="flex gap-3 justify-end">
+            <Button variant="outline" onClick={() => setShowNotifications(false)}>
+              Cancelar
+            </Button>
+            <Button onClick={handleSaveNotifications} className="bg-[#071d7f] hover:bg-[#071d7f]/90">
+              Guardar Cambios
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Cancel Order Dialog */}
+      <Dialog open={showCancelDialog} onOpenChange={setShowCancelDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-red-600">
+              <AlertTriangle className="h-5 w-5" />
+              Cancelar Pedido
+            </DialogTitle>
+            <DialogDescription>
+              Esta acción no se puede deshacer. Por favor indica el motivo de la cancelación.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Motivo de cancelación *</label>
+              <Textarea
+                placeholder="Escribe el motivo de la cancelación..."
+                value={cancelReason}
+                onChange={(e) => setCancelReason(e.target.value)}
+                rows={3}
+              />
+            </div>
+
+            {selectedOrder?.status === 'paid' && (
+              <div className="flex items-start gap-3 p-3 bg-amber-50 rounded-lg border border-amber-200">
+                <input
+                  type="checkbox"
+                  id="refund"
+                  checked={requestRefund}
+                  onChange={(e) => setRequestRefund(e.target.checked)}
+                  className="mt-1"
+                />
+                <div className="space-y-1">
+                  <label htmlFor="refund" className="font-medium text-amber-800 cursor-pointer">
+                    Solicitar reembolso
+                  </label>
+                  <p className="text-xs text-amber-600">
+                    Tu pedido ya fue pagado. Marca esta opción para solicitar el reembolso de ${selectedOrder?.total_amount.toLocaleString()}
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setShowCancelDialog(false)} disabled={cancelOrder.isPending}>
+              Volver
+            </Button>
+            <Button 
+              variant="destructive" 
+              onClick={handleConfirmCancel}
+              disabled={!cancelReason.trim() || cancelOrder.isPending}
+            >
+              {cancelOrder.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              ) : (
+                <XCircle className="h-4 w-4 mr-2" />
+              )}
+              Confirmar Cancelación
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </SellerLayout>
   );
 };

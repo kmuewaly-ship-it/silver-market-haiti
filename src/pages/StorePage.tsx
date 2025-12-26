@@ -72,8 +72,8 @@ const StorePage = () => {
     <div className="min-h-screen bg-gray-50 font-sans">
       <Header />
       
-      {/* Hero Section */}
-      <div className="relative h-64 md:h-80 w-full overflow-hidden bg-gray-900">
+      {/* Hero Section - Compact */}
+      <div className="relative h-24 md:h-32 w-full overflow-hidden bg-gray-900">
         {store.banner ? (
             <img 
                 src={store.banner} 
@@ -86,48 +86,48 @@ const StorePage = () => {
         <div className="absolute inset-0 bg-black/30" />
       </div>
 
-      <main className="container mx-auto px-4 pb-16 -mt-24 relative z-10">
-        {/* Store Profile Card */}
-        <div className="bg-white rounded-xl shadow-xl border border-gray-100 p-6 md:p-8 mb-10">
-            <div className="flex flex-col md:flex-row gap-6 md:items-end">
-                <div className="relative -mt-16 md:-mt-20">
-                    <Avatar className="h-32 w-32 md:h-40 md:w-40 border-4 border-white shadow-lg rounded-xl">
+      <main className="container mx-auto px-3 md:px-4 pb-12 md:pb-16 -mt-12 md:-mt-24 relative z-10">
+        {/* Store Profile Card - Compact */}
+        <div className="bg-white rounded-lg md:rounded-xl shadow-lg md:shadow-xl border border-gray-100 p-4 md:p-8 mb-8">
+            <div className="flex flex-col sm:flex-row gap-3 md:gap-6 sm:items-end">
+                <div className="relative -mt-12 md:-mt-20 flex-shrink-0">
+                    <Avatar className="h-20 w-20 md:h-40 md:w-40 border-2 md:border-4 border-white shadow-md md:shadow-lg rounded-lg md:rounded-xl">
                         <AvatarImage src={store.logo || ""} alt={store.name} className="object-cover" />
-                        <AvatarFallback className="text-4xl font-bold bg-blue-50 text-blue-900 rounded-xl">
+                        <AvatarFallback className="text-xl md:text-4xl font-bold bg-blue-50 text-blue-900 rounded-lg md:rounded-xl">
                             {store.name.substring(0, 2).toUpperCase()}
                         </AvatarFallback>
                     </Avatar>
                     {store.is_active && (
-                        <div className="absolute bottom-2 right-2 bg-green-500 text-white p-1.5 rounded-full border-4 border-white shadow-sm" title="Verificado">
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path></svg>
+                        <div className="absolute bottom-0 right-0 bg-green-500 text-white p-1 md:p-1.5 rounded-full border-2 md:border-4 border-white shadow-sm" title="Verificado">
+                            <svg className="w-3 h-3 md:w-4 md:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path></svg>
                         </div>
                     )}
                 </div>
                 
-                <div className="flex-1 space-y-3 text-center md:text-left">
-                    <div>
-                        <h1 className="text-3xl md:text-4xl font-bold text-gray-900 tracking-tight">{store.name}</h1>
-                        <p className="text-gray-500 mt-1 flex items-center justify-center md:justify-start gap-2">
-                            <MapPin className="h-4 w-4" />
-                            {store.slug ? `@${store.slug}` : "Vendedor Verificado"}
+                <div className="flex-1 space-y-2 md:space-y-3 text-center sm:text-left">
+                    <div className="min-w-0">
+                        <h1 className="text-lg md:text-4xl font-bold text-gray-900 tracking-tight truncate">{store.name}</h1>
+                        <p className="text-xs md:text-sm text-gray-500 mt-0.5 md:mt-1 flex items-center justify-center sm:justify-start gap-1 truncate">
+                            <MapPin className="h-3 w-3 md:h-4 md:w-4 flex-shrink-0" />
+                            <span className="truncate">{store.slug ? `@${store.slug}` : "Verificado"}</span>
                         </p>
                     </div>
                     
-                    <div className="flex flex-wrap items-center justify-center md:justify-start gap-3">
-                        <Badge variant="secondary" className="bg-blue-50 text-blue-700 hover:bg-blue-100 px-3 py-1">
-                            <Star className="h-3 w-3 mr-1 fill-blue-700" />
-                            4.9 Calificación
+                    <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 text-xs">
+                        <Badge variant="secondary" className="bg-blue-50 text-blue-700 hover:bg-blue-100 px-2 py-0.5 text-xs md:px-3 md:py-1">
+                            <Star className="h-2.5 w-2.5 md:h-3 md:w-3 mr-1 fill-blue-700" />
+                            4.9
                         </Badge>
-                        <Badge variant="outline" className="border-gray-200 text-gray-600">
-                            <ShoppingBag className="h-3 w-3 mr-1" />
-                            {productsData?.total || 0} Productos
+                        <Badge variant="outline" className="border-gray-200 text-gray-600 text-xs md:px-3 md:py-1 px-2 py-0.5">
+                            <ShoppingBag className="h-2.5 w-2.5 md:h-3 md:w-3 mr-1" />
+                            {productsData?.total || 0}
                         </Badge>
                     </div>
                 </div>
 
-                <div className="flex flex-col gap-2 w-full md:w-auto">
-                    <Button className="w-full md:w-auto bg-blue-600 hover:bg-blue-700">
-                        Contactar Vendedor
+                <div className="flex gap-2 w-full sm:w-auto flex-shrink-0 text-xs md:text-sm">
+                    <Button size="sm" className="flex-1 sm:flex-none bg-blue-600 hover:bg-blue-700 h-8 md:h-10 text-xs md:text-sm">
+                        Contactar
                     </Button>
                 </div>
             </div>

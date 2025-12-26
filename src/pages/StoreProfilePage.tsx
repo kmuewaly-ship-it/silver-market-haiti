@@ -164,8 +164,8 @@ const StoreProfilePage = () => {
       {!isMobile && <Header />}
 
       <main className={`container mx-auto px-4 ${isMobile ? 'pb-20' : 'pb-0'}`}>
-        {/* Banner */}
-        <div className="relative h-64 md:h-80 bg-gray-200 rounded-b-lg overflow-hidden -mx-4 mb-0">
+        {/* Banner - Compact */}
+        <div className="relative h-24 md:h-32 bg-gray-200 rounded-b-lg overflow-hidden -mx-4 mb-0">
           {store.banner ? (
             <img
               src={store.banner}
@@ -174,7 +174,7 @@ const StoreProfilePage = () => {
             />
           ) : (
             <div className="w-full h-full bg-gradient-to-r from-blue-900 to-blue-600 flex items-center justify-center">
-                <ShoppingBag className="h-24 w-24 text-white/20" />
+                <ShoppingBag className="h-16 w-16 text-white/20" />
             </div>
           )}
           <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent"></div>
