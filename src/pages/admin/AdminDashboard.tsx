@@ -6,7 +6,12 @@ import {
   TrendingUp,
   Clock,
   CheckCircle2,
-  AlertTriangle
+  AlertTriangle,
+  Percent,
+  Package,
+  PackageCheck,
+  AlertCircle,
+  DollarSign
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -35,6 +40,18 @@ const getMethodLabel = (method: string) => {
   }
 };
 
+const StatCard = ({ icon: Icon, label, value, color, bgColor }: any) => (
+  <div className="bg-card rounded-lg shadow-sm hover:shadow-md transition-shadow p-4 border border-border/50">
+    <div className="flex items-start justify-between mb-3">
+      <div className={`${bgColor} p-2 rounded-lg`}>
+        <Icon className={`w-5 h-5 ${color}`} />
+      </div>
+    </div>
+    <p className="text-xs text-muted-foreground mb-1">{label}</p>
+    <p className="text-lg font-semibold text-foreground">{value}</p>
+  </div>
+);
+
 const AdminDashboard = () => {
   const { payments, stats, isLoading: paymentsLoading } = usePayments();
   const { sellersCount, isLoading: sellersLoading } = useSellers();
@@ -42,7 +59,52 @@ const AdminDashboard = () => {
   const isLoading = paymentsLoading || sellersLoading;
   const recentPayments = payments.slice(0, 5);
 
-  const statsData = [
+  const stickyStatsData = [
+    {
+      label: "Total Órdenes",
+      value: "2,847",
+      icon: Package,
+      color: "text-blue-600",
+      bgColor: "bg-blue-50"
+    },
+    {
+      label: "Ingresos",
+      value: "$48,392",
+      icon: TrendingUp,
+      color: "text-green-600",
+      bgColor: "bg-green-50"
+    },
+    {
+      label: "Comisiones",
+      value: "$4,839",
+      icon: DollarSign,
+      color: "text-amber-600",
+      bgColor: "bg-amber-50"
+    },
+    {
+      label: "Vendedores",
+      value: sellersCount.toString(),
+      icon: Users,
+      color: "text-purple-600",
+      bgColor: "bg-purple-50"
+    },
+    {
+      label: "KYC Pendiente",
+      value: "12",
+      icon: AlertCircle,
+      color: "text-yellow-600",
+      bgColor: "bg-yellow-50"
+    },
+    {
+      label: "Aprobaciones",
+      value: "8",
+      icon: CheckCircle2,
+      color: "text-emerald-600",
+      bgColor: "bg-emerald-50"
+    }
+  ];
+
+  const dashStatsData = [
     {
       title: "Pagos Pendientes",
       value: stats.pending.toString(),
@@ -79,13 +141,29 @@ const AdminDashboard = () => {
       bgColor: "bg-accent/10",
       link: "/admin/conciliacion"
     },
+    {
+      title: "Comisiones Personalizadas",
+      value: "Gestionar",
+      description: "Overrides por vendedor",
+      icon: Percent,
+      color: "text-purple-600",
+      bgColor: "bg-purple-600/10",
+      link: "/admin/commissions"
+    },
   ];
 
   if (isLoading) {
     return (
       <AdminLayout title="Dashboard" subtitle="Bienvenido al panel de administración">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-          {[1, 2, 3, 4].map((i) => (
+        <div className="sticky top-0 z-40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b border-border/40 -mx-6 px-6 py-4 mb-6">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+            {[1, 2, 3, 4, 5, 6].map((i) => (
+              <Skeleton key={i} className="h-24" />
+            ))}
+          </div>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 mb-8">
+          {[1, 2, 3, 4, 5].map((i) => (
             <Skeleton key={i} className="h-32" />
           ))}
         </div>
@@ -99,9 +177,25 @@ const AdminDashboard = () => {
       title="Dashboard" 
       subtitle="Bienvenido al panel de administración"
     >
-      {/* Stats Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        {statsData.map((stat) => (
+      {/* Sticky Stats Header */}
+      <div className="sticky top-0 z-40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b border-border/40 -mx-6 px-6 py-4 mb-6">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+          {stickyStatsData.map((stat) => (
+            <StatCard
+              key={stat.label}
+              icon={stat.icon}
+              label={stat.label}
+              value={stat.value}
+              color={stat.color}
+              bgColor={stat.bgColor}
+            />
+          ))}
+        </div>
+      </div>
+
+      {/* Dashboard Stats Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 mb-8">
+        {dashStatsData.map((stat) => (
           <Link key={stat.title} to={stat.link}>
             <Card className="hover:shadow-card transition-all duration-300 cursor-pointer group">
               <CardContent className="p-6">

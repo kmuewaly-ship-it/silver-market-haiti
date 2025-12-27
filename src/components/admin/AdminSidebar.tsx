@@ -51,11 +51,11 @@ const mainNavItems = [
   { title: "Config. Precios", url: "/admin/precios", icon: Calculator },
   { title: "Vendedores", url: "/admin/vendedores", icon: Users },
   { title: "Banners", url: "/admin/banners", icon: ImageIcon },
-  { title: "Puntos de Recogida", url: "/admin/puntos", icon: MapPin },
 ];
 
 const settingsItems = [
-  { title: "Configuración", url: "/admin/configuracion", icon: Settings },
+  { title: "Puntos de Retiro", url: "/admin/pickup-points", icon: MapPin },
+  { title: "Comisiones", url: "/admin/commissions", icon: Settings },
 ];
 
 export function AdminSidebar() {

@@ -1,7 +1,8 @@
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Suspense } from "react-router-dom";
+import { lazy, ReactNode, Suspense } from "react";
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import { UserRole } from "@/types/auth";
@@ -11,58 +12,71 @@ import { useToast } from "@/hooks/useToastNotification";
 import { ViewModeProvider } from "@/contexts/ViewModeContext";
 import { useCartMigration } from "@/hooks/useCartMigration";
 import VariantDrawer from "@/components/products/VariantDrawer";
-
-// Public Pages
-import Index from "./pages/Index";
-import NotFound from "./pages/NotFound";
-import StorePage from "./pages/StorePage";
-import ProductPage from "./pages/ProductPage";
-import SellerRegistrationPage from "./pages/SellerRegistrationPage";
-import CategoriesPage from "./pages/CategoriesPage";
-import CategoryProductsPage from "./pages/CategoryProductsPage";
-import StoreProfilePage from "./pages/StoreProfilePage";
-import AccountPage from "./pages/AccountPage";
-import CartPage from "./pages/CartPage";
-import FavoritesPage from "./pages/FavoritesPage";
-import SearchResultsPage from "./pages/SearchResultsPage";
-import TrendsPage from "./pages/TrendsPage";
-import LoginPage from "./pages/LoginPage";
-import MarketplacePage from "./pages/MarketplacePage";
-import MyPurchasesPage from "./pages/MyPurchasesPage";
-import CheckoutPage from "./pages/CheckoutPage";
-
-// Admin Pages
-import AdminLogin from "./pages/admin/AdminLogin";
-import AdminDashboard from "./pages/admin/AdminDashboard";
-import AdminConciliacion from "./pages/admin/AdminConciliacion";
-import AdminCatalogo from "./pages/admin/AdminCatalogo";
-import AdminCategorias from "./pages/admin/AdminCategorias";
-import AdminVendedores from "./pages/admin/AdminVendedores";
-import AdminBanners from "./pages/admin/AdminBanners";
-import AdminProveedores from "./pages/admin/AdminProveedores";
-import AdminPedidos from "./pages/admin/AdminPedidos";
-import AdminPreciosConfig from "./pages/admin/AdminPreciosConfig";
-import AdminApprovals from "./pages/admin/AdminApprovals";
-import AdminCotizaciones from "./pages/admin/AdminCotizaciones";
-import AdminReembolsos from "./pages/admin/AdminReembolsos";
-
-// Seller Pages
-import SellerAcquisicionLotes from "./pages/seller/SellerAcquisicionLotes";
-import SellerCheckout from "./pages/seller/SellerCheckout";
-import SellerCatalogo from "./pages/seller/SellerCatalogo";
-import SellerAccountPage from "./pages/seller/SellerAccountPage";
-import SellerProfilePage from "./pages/seller/SellerProfilePage";
-import SellerCartPage from "./pages/seller/SellerCartPage";
-import SellerFavoritesPage from "./pages/seller/SellerFavoritesPage";
-import SellerInventarioB2C from "./pages/seller/SellerInventarioB2C";
-import SellerPedidosPage from "./pages/seller/SellerPedidosPage";
-import SellerMisComprasPage from "./pages/seller/SellerMisComprasPage";
-import SellerOnboardingPage from "./pages/seller/SellerOnboardingPage";
-import SellerKYCPage from "./pages/seller/SellerKYCPage";
 import { PageLoader } from "./components/ui/PageLoader";
 import { NavigationLoader } from "./components/ui/NavigationLoader";
 import MobileBottomNav from "./components/categories/MobileBottomNav";
 import GlobalMobileHeader from "./components/layout/GlobalMobileHeader";
+
+// Suspense Wrapper for lazy components
+const LazyRoute = ({ children }: { children: ReactNode }) => (
+  <Suspense fallback={<PageLoader />}>
+    {children}
+  </Suspense>
+);
+
+// Eagerly loaded (critical path)
+import Index from "./pages/Index";
+import NotFound from "./pages/NotFound";
+import LoginPage from "./pages/LoginPage";
+import AdminLogin from "./pages/admin/AdminLogin";
+import SellerOnboardingPage from "./pages/seller/SellerOnboardingPage";
+import SellerRegistrationPage from "./pages/SellerRegistrationPage";
+
+// Lazy loaded - Public Pages
+const StorePage = lazy(() => import("./pages/StorePage"));
+const ProductPage = lazy(() => import("./pages/ProductPage"));
+const CategoriesPage = lazy(() => import("./pages/CategoriesPage"));
+const CategoryProductsPage = lazy(() => import("./pages/CategoryProductsPage"));
+const StoreProfilePage = lazy(() => import("./pages/StoreProfilePage"));
+const AccountPage = lazy(() => import("./pages/AccountPage"));
+const CartPage = lazy(() => import("./pages/CartPage"));
+const FavoritesPage = lazy(() => import("./pages/FavoritesPage"));
+const SearchResultsPage = lazy(() => import("./pages/SearchResultsPage"));
+const TrendsPage = lazy(() => import("./pages/TrendsPage"));
+const MarketplacePage = lazy(() => import("./pages/MarketplacePage"));
+const MyPurchasesPage = lazy(() => import("./pages/MyPurchasesPage"));
+const CheckoutPage = lazy(() => import("./pages/CheckoutPage"));
+
+// Lazy loaded - Admin Pages
+const AdminDashboard = lazy(() => import("./pages/admin/AdminDashboard"));
+const AdminConciliacion = lazy(() => import("./pages/admin/AdminConciliacion"));
+const AdminCatalogo = lazy(() => import("./pages/admin/AdminCatalogo"));
+const AdminCategorias = lazy(() => import("./pages/admin/AdminCategorias"));
+const AdminVendedores = lazy(() => import("./pages/admin/AdminVendedores"));
+const AdminBanners = lazy(() => import("./pages/admin/AdminBanners"));
+const AdminProveedores = lazy(() => import("./pages/admin/AdminProveedores"));
+const AdminPedidos = lazy(() => import("./pages/admin/AdminPedidos"));
+const AdminPreciosConfig = lazy(() => import("./pages/admin/AdminPreciosConfig"));
+const AdminApprovals = lazy(() => import("./pages/admin/AdminApprovals"));
+const AdminCotizaciones = lazy(() => import("./pages/admin/AdminCotizaciones"));
+const AdminReembolsos = lazy(() => import("./pages/admin/AdminReembolsos"));
+const AdminCommissionPage = lazy(() => import("./pages/admin/AdminCommissionPage"));
+const AdminPickupPointsPage = lazy(() => import("./pages/admin/AdminPickupPointsPage"));
+
+// Lazy loaded - Seller Pages
+const SellerAcquisicionLotes = lazy(() => import("./pages/seller/SellerAcquisicionLotes"));
+const SellerCheckout = lazy(() => import("./pages/seller/SellerCheckout"));
+const SellerCatalogo = lazy(() => import("./pages/seller/SellerCatalogo"));
+const SellerAccountPage = lazy(() => import("./pages/seller/SellerAccountPage"));
+const SellerWalletPage = lazy(() => import("./pages/seller/SellerWalletPage"));
+const SellerDashboard = lazy(() => import("./pages/seller/SellerDashboard"));
+const SellerProfilePage = lazy(() => import("./pages/seller/SellerProfilePage"));
+const SellerCartPage = lazy(() => import("./pages/seller/SellerCartPage"));
+const SellerFavoritesPage = lazy(() => import("./pages/seller/SellerFavoritesPage"));
+const SellerInventarioB2C = lazy(() => import("./pages/seller/SellerInventarioB2C"));
+const SellerPedidosPage = lazy(() => import("./pages/seller/SellerPedidosPage"));
+const SellerMisComprasPage = lazy(() => import("./pages/seller/SellerMisComprasPage"));
+const SellerKYCPage = lazy(() => import("./pages/seller/SellerKYCPage"));
 
 const AppContent = () => {
   const { toasts, removeToast } = useToast();
@@ -84,19 +98,18 @@ const AppContent = () => {
       <Routes>
             {/* ========== PUBLIC ROUTES (B2C) ========== */}
             <Route path="/" element={<Index />} />
-            <Route path="/marketplace" element={<MarketplacePage />} />
-            <Route path="/categorias" element={<CategoriesPage />} />
-            <Route path="/categoria/:slug" element={<CategoryProductsPage />} />
-            <Route path="/tienda/:storeId" element={<StoreProfilePage />} />
-            <Route path="/producto/:sku" element={<ProductPage />} />
-            <Route path="/cuenta" element={<AccountPage />} />
-            <Route path="/mis-compras" element={<MyPurchasesPage />} />
-            <Route path="/carrito" element={<CartPage />} />
-            <Route path="/checkout" element={<CheckoutPage />} />
-            <Route path="/favoritos" element={<FavoritesPage />} />
-            <Route path="/tendencias" element={<TrendsPage />} />
-            <Route path="/busqueda" element={<SearchResultsPage />} />
-            <Route path="/tendencias" element={<TrendsPage />} />
+            <Route path="/marketplace" element={<LazyRoute><MarketplacePage /></LazyRoute>} />
+            <Route path="/categorias" element={<LazyRoute><CategoriesPage /></LazyRoute>} />
+            <Route path="/categoria/:slug" element={<LazyRoute><CategoryProductsPage /></LazyRoute>} />
+            <Route path="/tienda/:storeId" element={<LazyRoute><StoreProfilePage /></LazyRoute>} />
+            <Route path="/producto/:sku" element={<LazyRoute><ProductPage /></LazyRoute>} />
+            <Route path="/cuenta" element={<LazyRoute><AccountPage /></LazyRoute>} />
+            <Route path="/mis-compras" element={<LazyRoute><MyPurchasesPage /></LazyRoute>} />
+            <Route path="/carrito" element={<LazyRoute><CartPage /></LazyRoute>} />
+            <Route path="/checkout" element={<LazyRoute><CheckoutPage /></LazyRoute>} />
+            <Route path="/favoritos" element={<LazyRoute><FavoritesPage /></LazyRoute>} />
+            <Route path="/tendencias" element={<LazyRoute><TrendsPage /></LazyRoute>} />
+            <Route path="/busqueda" element={<LazyRoute><SearchResultsPage /></LazyRoute>} />
             
             {/* Auth Routes */}
             <Route path="/login" element={<LoginPage />} />
@@ -114,7 +127,7 @@ const AppContent = () => {
               path="/admin/dashboard" 
               element={
                 <ProtectedRoute requiredRoles={[UserRole.ADMIN]}>
-                  <AdminDashboard />
+                  <LazyRoute><AdminDashboard /></LazyRoute>
                 </ProtectedRoute>
               } 
             />
@@ -122,7 +135,7 @@ const AppContent = () => {
               path="/admin/conciliacion" 
               element={
                 <ProtectedRoute requiredRoles={[UserRole.ADMIN]}>
-                  <AdminConciliacion />
+                  <LazyRoute><AdminConciliacion /></LazyRoute>
                 </ProtectedRoute>
               } 
             />
@@ -130,7 +143,7 @@ const AppContent = () => {
               path="/admin/catalogo" 
               element={
                 <ProtectedRoute requiredRoles={[UserRole.ADMIN]}>
-                  <AdminCatalogo />
+                  <LazyRoute><AdminCatalogo /></LazyRoute>
                 </ProtectedRoute>
               } 
             />
@@ -138,7 +151,7 @@ const AppContent = () => {
               path="/admin/categorias" 
               element={
                 <ProtectedRoute requiredRoles={[UserRole.ADMIN]}>
-                  <AdminCategorias />
+                  <LazyRoute><AdminCategorias /></LazyRoute>
                 </ProtectedRoute>
               } 
             />
@@ -146,7 +159,7 @@ const AppContent = () => {
               path="/admin/vendedores" 
               element={
                 <ProtectedRoute requiredRoles={[UserRole.ADMIN]}>
-                  <AdminVendedores />
+                  <LazyRoute><AdminVendedores /></LazyRoute>
                 </ProtectedRoute>
               } 
             />
@@ -154,7 +167,7 @@ const AppContent = () => {
               path="/admin/banners" 
               element={
                 <ProtectedRoute requiredRoles={[UserRole.ADMIN]}>
-                  <AdminBanners />
+                  <LazyRoute><AdminBanners /></LazyRoute>
                 </ProtectedRoute>
               } 
             />
@@ -162,7 +175,7 @@ const AppContent = () => {
               path="/admin/proveedores" 
               element={
                 <ProtectedRoute requiredRoles={[UserRole.ADMIN]}>
-                  <AdminProveedores />
+                  <LazyRoute><AdminProveedores /></LazyRoute>
                 </ProtectedRoute>
               } 
             />
@@ -170,7 +183,7 @@ const AppContent = () => {
               path="/admin/pedidos" 
               element={
                 <ProtectedRoute requiredRoles={[UserRole.ADMIN]}>
-                  <AdminPedidos />
+                  <LazyRoute><AdminPedidos /></LazyRoute>
                 </ProtectedRoute>
               } 
             />
@@ -178,7 +191,7 @@ const AppContent = () => {
               path="/admin/precios" 
               element={
                 <ProtectedRoute requiredRoles={[UserRole.ADMIN]}>
-                  <AdminPreciosConfig />
+                  <LazyRoute><AdminPreciosConfig /></LazyRoute>
                 </ProtectedRoute>
               } 
             />
@@ -186,7 +199,7 @@ const AppContent = () => {
               path="/admin/aprobaciones" 
               element={
                 <ProtectedRoute requiredRoles={[UserRole.ADMIN]}>
-                  <AdminApprovals />
+                  <LazyRoute><AdminApprovals /></LazyRoute>
                 </ProtectedRoute>
               } 
             />
@@ -194,7 +207,7 @@ const AppContent = () => {
               path="/admin/cotizaciones" 
               element={
                 <ProtectedRoute requiredRoles={[UserRole.ADMIN]}>
-                  <AdminCotizaciones />
+                  <LazyRoute><AdminCotizaciones /></LazyRoute>
                 </ProtectedRoute>
               } 
             />
@@ -202,7 +215,23 @@ const AppContent = () => {
               path="/admin/reembolsos" 
               element={
                 <ProtectedRoute requiredRoles={[UserRole.ADMIN]}>
-                  <AdminReembolsos />
+                  <LazyRoute><AdminReembolsos /></LazyRoute>
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/admin/commissions" 
+              element={
+                <ProtectedRoute requiredRoles={[UserRole.ADMIN]}>
+                  <LazyRoute><AdminCommissionPage /></LazyRoute>
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/admin/pickup-points" 
+              element={
+                <ProtectedRoute requiredRoles={[UserRole.ADMIN]}>
+                  <LazyRoute><AdminPickupPointsPage /></LazyRoute>
                 </ProtectedRoute>
               } 
             />
@@ -213,7 +242,7 @@ const AppContent = () => {
               path="/seller/adquisicion-lotes" 
               element={
                 <ProtectedRoute requiredRoles={[UserRole.SELLER, UserRole.ADMIN]}>
-                  <SellerAcquisicionLotes />
+                  <LazyRoute><SellerAcquisicionLotes /></LazyRoute>
                 </ProtectedRoute>
               } 
             />
@@ -221,7 +250,7 @@ const AppContent = () => {
               path="/seller/checkout" 
               element={
                 <ProtectedRoute requiredRoles={[UserRole.SELLER, UserRole.ADMIN]}>
-                  <SellerCheckout />
+                  <LazyRoute><SellerCheckout /></LazyRoute>
                 </ProtectedRoute>
               } 
             />
@@ -229,7 +258,7 @@ const AppContent = () => {
               path="/seller/catalogo" 
               element={
                 <ProtectedRoute requiredRoles={[UserRole.SELLER, UserRole.ADMIN]}>
-                  <SellerCatalogo />
+                  <LazyRoute><SellerCatalogo /></LazyRoute>
                 </ProtectedRoute>
               } 
             />
@@ -237,7 +266,7 @@ const AppContent = () => {
               path="/seller/inventario" 
               element={
                 <ProtectedRoute requiredRoles={[UserRole.SELLER, UserRole.ADMIN]}>
-                  <SellerInventarioB2C />
+                  <LazyRoute><SellerInventarioB2C /></LazyRoute>
                 </ProtectedRoute>
               } 
             />
@@ -245,7 +274,7 @@ const AppContent = () => {
               path="/seller/kyc" 
               element={
                 <ProtectedRoute requiredRoles={[UserRole.SELLER, UserRole.ADMIN]}>
-                  <SellerKYCPage />
+                  <LazyRoute><SellerKYCPage /></LazyRoute>
                 </ProtectedRoute>
               } 
             />
@@ -253,7 +282,7 @@ const AppContent = () => {
               path="/seller/pedidos" 
               element={
                 <ProtectedRoute requiredRoles={[UserRole.SELLER, UserRole.ADMIN]}>
-                  <SellerPedidosPage />
+                  <LazyRoute><SellerPedidosPage /></LazyRoute>
                 </ProtectedRoute>
               } 
             />
@@ -261,7 +290,7 @@ const AppContent = () => {
               path="/seller/mis-compras" 
               element={
                 <ProtectedRoute requiredRoles={[UserRole.SELLER, UserRole.ADMIN]}>
-                  <SellerMisComprasPage />
+                  <LazyRoute><SellerMisComprasPage /></LazyRoute>
                 </ProtectedRoute>
               } 
             />
@@ -269,7 +298,23 @@ const AppContent = () => {
               path="/seller/cuenta"
               element={
                 <ProtectedRoute requiredRoles={[UserRole.SELLER, UserRole.ADMIN]}>
-                  <SellerAccountPage />
+                  <LazyRoute><SellerAccountPage /></LazyRoute>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/seller/wallet"
+              element={
+                <ProtectedRoute requiredRoles={[UserRole.SELLER, UserRole.ADMIN]}>
+                  <LazyRoute><SellerWalletPage /></LazyRoute>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/seller/dashboard"
+              element={
+                <ProtectedRoute requiredRoles={[UserRole.SELLER, UserRole.ADMIN]}>
+                  <LazyRoute><SellerDashboard /></LazyRoute>
                 </ProtectedRoute>
               }
             />
@@ -277,7 +322,7 @@ const AppContent = () => {
               path="/seller/profile"
               element={
                 <ProtectedRoute requiredRoles={[UserRole.SELLER, UserRole.ADMIN]}>
-                  <SellerProfilePage />
+                  <LazyRoute><SellerProfilePage /></LazyRoute>
                 </ProtectedRoute>
               }
             />
@@ -285,7 +330,7 @@ const AppContent = () => {
               path="/seller/carrito" 
               element={
                 <ProtectedRoute requiredRoles={[UserRole.SELLER, UserRole.ADMIN]}>
-                  <SellerCartPage />
+                  <LazyRoute><SellerCartPage /></LazyRoute>
                 </ProtectedRoute>
               } 
             />
@@ -293,7 +338,7 @@ const AppContent = () => {
               path="/seller/favoritos" 
               element={
                 <ProtectedRoute requiredRoles={[UserRole.SELLER, UserRole.ADMIN]}>
-                  <SellerFavoritesPage />
+                  <LazyRoute><SellerFavoritesPage /></LazyRoute>
                 </ProtectedRoute>
               } 
             />

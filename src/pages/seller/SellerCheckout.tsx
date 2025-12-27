@@ -6,6 +6,7 @@ import { useCartB2B } from '@/hooks/useCartB2B';
 import { useKYC } from '@/hooks/useKYC';
 import { useSellerCredits } from '@/hooks/useSellerCredits';
 import { useAddresses, Address } from '@/hooks/useAddresses';
+import { usePickupPoints } from '@/hooks/usePickupPoints';
 import { SellerLayout } from '@/components/seller/SellerLayout';
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
@@ -17,6 +18,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Slider } from '@/components/ui/slider';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { supabase } from '@/integrations/supabase/client';
 import {
   ArrowLeft,
@@ -34,10 +36,13 @@ import {
   Plus,
   ChevronDown,
   ChevronUp,
+  Truck,
+  Store,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
 type PaymentMethod = 'stripe' | 'moncash' | 'transfer';
+type DeliveryMethod = 'address' | 'pickup';
 
 const SellerCheckout = () => {
   const navigate = useNavigate();
@@ -48,7 +53,9 @@ const SellerCheckout = () => {
   const { isVerified } = useKYC();
   const { credit, availableCredit, hasActiveCredit, calculateMaxCreditForCart } = useSellerCredits();
   const { addresses, isLoading: addressesLoading, createAddress } = useAddresses();
+  const { pickupPoints, isLoading: pickupPointsLoading } = usePickupPoints();
 
+  const [deliveryMethod, setDeliveryMethod] = useState<DeliveryMethod>('address');
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('stripe');
   const [isProcessing, setIsProcessing] = useState(false);
   const [orderPlaced, setOrderPlaced] = useState(false);
@@ -57,6 +64,7 @@ const SellerCheckout = () => {
   const [paymentNotes, setPaymentNotes] = useState('');
   const [creditAmount, setCreditAmount] = useState(0);
   const [useSiverCredit, setUseSiverCredit] = useState(false);
+  const [selectedPickupPoint, setSelectedPickupPoint] = useState<string | null>(null);
   
   // Create order from local cart
   const createOrder = async (
@@ -71,7 +79,9 @@ const SellerCheckout = () => {
       postal_code?: string;
       country: string;
       notes?: string;
-    }
+    },
+    deliveryMethod?: DeliveryMethod,
+    pickupPointId?: string
   ) => {
     if (!user?.id || cart.items.length === 0) {
       toast.error('Carrito vacío o usuario no autenticado');
@@ -79,7 +89,22 @@ const SellerCheckout = () => {
     }
 
     try {
-      // Create order with shipping address in metadata
+      // Create metadata object
+      const metadata: Record<string, any> = {};
+      
+      if (shippingAddress) {
+        metadata.shipping_address = shippingAddress;
+      }
+
+      if (deliveryMethod) {
+        metadata.delivery_method = deliveryMethod;
+      }
+
+      if (pickupPointId) {
+        metadata.pickup_point_id = pickupPointId;
+      }
+
+      // Create order with shipping address and delivery info in metadata
       const { data: order, error: orderError } = await supabase
         .from('orders_b2b')
         .insert({
@@ -89,7 +114,7 @@ const SellerCheckout = () => {
           payment_method: paymentMethod,
           status: 'draft',
           currency: 'USD',
-          metadata: shippingAddress ? { shipping_address: shippingAddress } : null,
+          metadata: Object.keys(metadata).length > 0 ? metadata : null,
         })
         .select()
         .single();
@@ -196,7 +221,7 @@ const SellerCheckout = () => {
     name: 'Siver Market 509',
   };
 
-  const isLoading = authLoading || cartLoading || addressesLoading;
+  const isLoading = authLoading || cartLoading || addressesLoading || pickupPointsLoading;
 
   // Get selected address
   const selectedAddress = addresses.find(a => a.id === selectedAddressId);
@@ -332,6 +357,19 @@ const SellerCheckout = () => {
       return;
     }
 
+    // Validate delivery method
+    if (deliveryMethod === 'address') {
+      if (!selectedAddressId) {
+        toast.error('Selecciona una dirección de envío');
+        return;
+      }
+    } else {
+      if (!selectedPickupPoint) {
+        toast.error('Selecciona un punto de retiro');
+        return;
+      }
+    }
+
     // Validate payment reference for non-Stripe methods
     if (paymentMethod !== 'stripe' && !paymentReference.trim()) {
       toast.error('Ingresa la referencia de pago');
@@ -358,7 +396,7 @@ const SellerCheckout = () => {
         postal_code: selectedAddress.postal_code || undefined,
         country: selectedAddress.country,
         notes: selectedAddress.notes || undefined,
-      } : undefined);
+      } : undefined, deliveryMethod, deliveryMethod === 'pickup' ? selectedPickupPoint : undefined);
 
       if (!order) {
         throw new Error('Error al crear el pedido');
@@ -463,7 +501,70 @@ const SellerCheckout = () => {
                 </div>
               </Card>
 
-              {/* Shipping Address */}
+              {/* Delivery Method Selection */}
+              <Card className="p-6">
+                <h2 className="text-lg font-bold mb-4 flex items-center gap-2">
+                  <Truck className="h-5 w-5 text-primary" />
+                  Opción de Entrega
+                </h2>
+                
+                <RadioGroup 
+                  value={deliveryMethod} 
+                  onValueChange={(value) => {
+                    setDeliveryMethod(value as DeliveryMethod);
+                    setSelectedAddressId(null);
+                    setSelectedPickupPoint(null);
+                  }}
+                  className="space-y-3"
+                >
+                  <div
+                    className={`flex items-center gap-4 p-4 rounded-lg border-2 cursor-pointer transition-all ${
+                      deliveryMethod === 'address'
+                        ? 'border-primary bg-primary/5'
+                        : 'border-border hover:border-muted-foreground'
+                    }`}
+                    onClick={() => {
+                      setDeliveryMethod('address');
+                      setSelectedAddressId(null);
+                      setSelectedPickupPoint(null);
+                    }}
+                  >
+                    <RadioGroupItem value="address" id="delivery-address" />
+                    <div className="flex items-center gap-3 flex-1">
+                      <Truck className="h-5 w-5 text-muted-foreground" />
+                      <div>
+                        <p className="font-semibold">Envío a Domicilio</p>
+                        <p className="text-sm text-muted-foreground">Recibirás tu pedido en la dirección que indiques</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div
+                    className={`flex items-center gap-4 p-4 rounded-lg border-2 cursor-pointer transition-all ${
+                      deliveryMethod === 'pickup'
+                        ? 'border-primary bg-primary/5'
+                        : 'border-border hover:border-muted-foreground'
+                    }`}
+                    onClick={() => {
+                      setDeliveryMethod('pickup');
+                      setSelectedAddressId(null);
+                      setSelectedPickupPoint(null);
+                    }}
+                  >
+                    <RadioGroupItem value="pickup" id="delivery-pickup" />
+                    <div className="flex items-center gap-3 flex-1">
+                      <Store className="h-5 w-5 text-muted-foreground" />
+                      <div>
+                        <p className="font-semibold">Retiro en Punto</p>
+                        <p className="text-sm text-muted-foreground">Retira tu pedido en uno de nuestros puntos</p>
+                      </div>
+                    </div>
+                  </div>
+                </RadioGroup>
+              </Card>
+
+              {/* Shipping Address - Only show if address delivery selected */}
+              {deliveryMethod === 'address' && (
               <Card className="p-6">
                 <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
                   <MapPin className="h-5 w-5 text-primary" />
@@ -640,6 +741,59 @@ const SellerCheckout = () => {
                   </div>
                 )}
               </Card>
+              )}
+
+              {/* Pickup Points - Only show if pickup delivery selected */}
+              {deliveryMethod === 'pickup' && (
+              <Card className="p-6">
+                <h2 className="text-lg font-bold mb-4 flex items-center gap-2">
+                  <Store className="h-5 w-5 text-primary" />
+                  Punto de Retiro
+                </h2>
+
+                {pickupPoints.length === 0 ? (
+                  <div className="text-center py-6 bg-muted/50 rounded-lg">
+                    <Store className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
+                    <p className="text-muted-foreground">No hay puntos de retiro disponibles</p>
+                  </div>
+                ) : (
+                  <RadioGroup 
+                    value={selectedPickupPoint || ''} 
+                    onValueChange={setSelectedPickupPoint}
+                    className="space-y-3"
+                  >
+                    {pickupPoints.map((point) => (
+                      <div
+                        key={point.id}
+                        className={`flex items-start gap-3 p-4 rounded-lg border-2 cursor-pointer transition-all ${
+                          selectedPickupPoint === point.id
+                            ? 'border-primary bg-primary/5'
+                            : 'border-border hover:border-muted-foreground'
+                        }`}
+                        onClick={() => setSelectedPickupPoint(point.id)}
+                      >
+                        <RadioGroupItem value={point.id} id={`pickup-${point.id}`} className="mt-1" />
+                        <div className="flex-1">
+                          <p className="font-semibold">{point.name}</p>
+                          <p className="text-sm text-muted-foreground">{point.address}</p>
+                          <p className="text-sm text-muted-foreground">
+                            {point.city}, {point.country}
+                          </p>
+                          {point.phone && (
+                            <p className="text-sm text-muted-foreground">Tel: {point.phone}</p>
+                          )}
+                        </div>
+                        {point.is_active && (
+                          <Badge variant="outline" className="text-green-600">
+                            Activo
+                          </Badge>
+                        )}
+                      </div>
+                    ))}
+                  </RadioGroup>
+                )}
+              </Card>
+              )}
 
 
               <Card className="p-6">
@@ -938,7 +1092,12 @@ const SellerCheckout = () => {
 
                 <Button
                   onClick={handlePlaceOrder}
-                  disabled={isProcessing || cart.totalItems === 0}
+                  disabled={
+                    isProcessing || 
+                    cart.totalItems === 0 ||
+                    (deliveryMethod === 'address' && !selectedAddressId) ||
+                    (deliveryMethod === 'pickup' && !selectedPickupPoint)
+                  }
                   className="w-full"
                   size="lg"
                 >

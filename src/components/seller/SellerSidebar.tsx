@@ -1,5 +1,5 @@
 import { Link, useLocation } from "react-router-dom";
-import { ShoppingCart, Home, LogOut, ShoppingBag, ChevronLeft, Package, Heart, User, Store, LayoutGrid, ClipboardList, Shield } from "lucide-react";
+import { ShoppingCart, Home, LogOut, ShoppingBag, ChevronLeft, Package, Heart, User, Store, LayoutGrid, ClipboardList, Shield, Wallet, LayoutDashboard } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -16,6 +16,10 @@ export function SellerSidebar() {
   const isCollapsed = state === "collapsed";
   const location = useLocation();
   const mainNavItems = [{
+    title: "Dashboard",
+    url: "/seller/dashboard",
+    icon: LayoutDashboard
+  }, {
     title: "Comprar Lotes",
     url: "/seller/adquisicion-lotes",
     icon: ShoppingCart,
@@ -45,6 +49,10 @@ export function SellerSidebar() {
     title: "Lista de Deseos",
     url: "/seller/favoritos",
     icon: Heart
+  }, {
+    title: "Mi Billetera",
+    url: "/seller/wallet",
+    icon: Wallet
   }, {
     title: "Créditos y KYC",
     url: "/seller/kyc",

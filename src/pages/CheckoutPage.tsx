@@ -6,6 +6,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useCart } from '@/hooks/useCart';
 import { useB2CCartSupabase } from '@/hooks/useB2CCartSupabase';
 import { useAddresses, Address } from '@/hooks/useAddresses';
+import { usePickupPoints } from '@/hooks/usePickupPoints';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useCreateB2COrder } from '@/hooks/useB2COrders';
 import { Button } from '@/components/ui/button';
@@ -31,10 +32,13 @@ import {
   Package,
   Star,
   Pencil,
+  Truck,
+  Store,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
 type PaymentMethod = 'stripe' | 'moncash' | 'transfer';
+type DeliveryMethod = 'address' | 'pickup';
 
 const CheckoutPage = () => {
   const navigate = useNavigate();
@@ -42,13 +46,16 @@ const CheckoutPage = () => {
   const { items, totalPrice, clearCart } = useCart();
   const { completeCart, cart: b2cCart } = useB2CCartSupabase();
   const { addresses, isLoading: addressesLoading } = useAddresses();
+  const { pickupPoints, isLoading: pickupPointsLoading } = usePickupPoints();
   const isMobile = useIsMobile();
   const createOrder = useCreateB2COrder();
 
   // Redirect sellers/admins to B2B checkout
   const isB2BUser = role === UserRole.SELLER || role === UserRole.ADMIN;
   
+  const [deliveryMethod, setDeliveryMethod] = useState<DeliveryMethod>('address');
   const [selectedAddress, setSelectedAddress] = useState<string | null>(null);
+  const [selectedPickupPoint, setSelectedPickupPoint] = useState<string | null>(null);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('stripe');
   const [isProcessing, setIsProcessing] = useState(false);
   const [orderPlaced, setOrderPlaced] = useState(false);
@@ -113,7 +120,7 @@ const CheckoutPage = () => {
   const totalItems = items.reduce((acc, item) => acc + item.quantity, 0);
   const subtotal = totalPrice();
 
-  if (authLoading || addressesLoading) {
+  if (authLoading || addressesLoading || pickupPointsLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-background">
         <Loader2 className="h-12 w-12 animate-spin text-[#071d7f]" />
@@ -229,9 +236,17 @@ const CheckoutPage = () => {
   }
 
   const handlePlaceOrder = async () => {
-    if (!selectedAddress) {
-      toast.error('Selecciona una dirección de envío');
-      return;
+    // Validate delivery method
+    if (deliveryMethod === 'address') {
+      if (!selectedAddress) {
+        toast.error('Selecciona una dirección de envío');
+        return;
+      }
+    } else {
+      if (!selectedPickupPoint) {
+        toast.error('Selecciona un punto de retiro');
+        return;
+      }
     }
 
     if (paymentMethod !== 'stripe' && !paymentReference.trim()) {
@@ -259,8 +274,8 @@ const CheckoutPage = () => {
         store_name: item.storeName,
       }));
 
-      // Prepare shipping address
-      const shippingAddress = selectedAddressData ? {
+      // Prepare shipping address (for address delivery)
+      const shippingAddress = deliveryMethod === 'address' && selectedAddressData ? {
         id: selectedAddressData.id,
         full_name: selectedAddressData.full_name,
         phone: selectedAddressData.phone || undefined,
@@ -281,6 +296,8 @@ const CheckoutPage = () => {
         payment_reference: paymentReference || undefined,
         notes: orderNotes || undefined,
         shipping_address: shippingAddress,
+        delivery_method: deliveryMethod,
+        pickup_point_id: deliveryMethod === 'pickup' ? selectedPickupPoint : undefined,
       });
 
       if (order) {
@@ -319,76 +336,192 @@ const CheckoutPage = () => {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Main Content */}
           <div className="lg:col-span-2 space-y-6">
-            {/* Shipping Address */}
+            {/* Delivery Method Selection */}
             <Card className="p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-bold flex items-center gap-2">
-                  <MapPin className="h-5 w-5 text-[#071d7f]" />
-                  Dirección de Envío
-                </h2>
-                <Button 
-                  variant="outline" 
-                  size="sm"
-                  onClick={() => setShowAddressDialog(true)}
+              <h2 className="text-lg font-bold mb-4 flex items-center gap-2">
+                <Truck className="h-5 w-5 text-[#071d7f]" />
+                Opción de Entrega
+              </h2>
+              
+              <RadioGroup 
+                value={deliveryMethod} 
+                onValueChange={(value) => {
+                  setDeliveryMethod(value as DeliveryMethod);
+                  setSelectedAddress(null);
+                  setSelectedPickupPoint(null);
+                }}
+                className="space-y-3"
+              >
+                <div
+                  className={`flex items-center gap-4 p-4 rounded-lg border-2 cursor-pointer transition-all ${
+                    deliveryMethod === 'address'
+                      ? 'border-[#071d7f] bg-blue-50/50'
+                      : 'border-border hover:border-muted-foreground'
+                  }`}
+                  onClick={() => {
+                    setDeliveryMethod('address');
+                    setSelectedAddress(null);
+                    setSelectedPickupPoint(null);
+                  }}
                 >
-                  <Pencil className="h-4 w-4 mr-1" />
-                  Gestionar
-                </Button>
-              </div>
+                  <RadioGroupItem value="address" id="delivery-address" />
+                  <div className="flex items-center gap-3 flex-1">
+                    <Truck className="h-5 w-5 text-muted-foreground" />
+                    <div>
+                      <p className="font-semibold">Envío a Domicilio</p>
+                      <p className="text-sm text-muted-foreground">Recibirás tu pedido en la dirección que indiques</p>
+                    </div>
+                  </div>
+                </div>
 
-              {addresses.length === 0 ? (
-                <div className="text-center py-6 bg-muted/50 rounded-lg">
-                  <MapPin className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
-                  <p className="text-muted-foreground mb-3">No tienes direcciones guardadas</p>
+                <div
+                  className={`flex items-center gap-4 p-4 rounded-lg border-2 cursor-pointer transition-all ${
+                    deliveryMethod === 'pickup'
+                      ? 'border-[#071d7f] bg-blue-50/50'
+                      : 'border-border hover:border-muted-foreground'
+                  }`}
+                  onClick={() => {
+                    setDeliveryMethod('pickup');
+                    setSelectedAddress(null);
+                    setSelectedPickupPoint(null);
+                  }}
+                >
+                  <RadioGroupItem value="pickup" id="delivery-pickup" />
+                  <div className="flex items-center gap-3 flex-1">
+                    <Store className="h-5 w-5 text-muted-foreground" />
+                    <div>
+                      <p className="font-semibold">Retiro en Punto</p>
+                      <p className="text-sm text-muted-foreground">Retira tu pedido en uno de nuestros puntos</p>
+                    </div>
+                  </div>
+                </div>
+              </RadioGroup>
+            </Card>
+
+            {/* Shipping Address */}
+            {deliveryMethod === 'address' && (
+              <Card className="p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-lg font-bold flex items-center gap-2">
+                    <MapPin className="h-5 w-5 text-[#071d7f]" />
+                    Dirección de Envío
+                  </h2>
                   <Button 
+                    variant="outline" 
+                    size="sm"
                     onClick={() => setShowAddressDialog(true)}
-                    className="bg-[#071d7f] hover:bg-[#0a2a9f]"
                   >
-                    <Plus className="h-4 w-4 mr-2" />
-                    Agregar Dirección
+                    <Pencil className="h-4 w-4 mr-1" />
+                    Gestionar
                   </Button>
                 </div>
-              ) : (
-                <RadioGroup 
-                  value={selectedAddress || ''} 
-                  onValueChange={setSelectedAddress}
-                  className="space-y-3"
-                >
-                  {addresses.map((address) => (
-                    <div
-                      key={address.id}
-                      className={`flex items-start gap-3 p-4 rounded-lg border-2 cursor-pointer transition-all ${
-                        selectedAddress === address.id
-                          ? 'border-[#071d7f] bg-blue-50/50'
-                          : 'border-border hover:border-muted-foreground'
-                      }`}
-                      onClick={() => setSelectedAddress(address.id)}
+
+                {addresses.length === 0 ? (
+                  <div className="text-center py-6 bg-muted/50 rounded-lg">
+                    <MapPin className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
+                    <p className="text-muted-foreground mb-3">No tienes direcciones guardadas</p>
+                    <Button 
+                      onClick={() => setShowAddressDialog(true)}
+                      className="bg-[#071d7f] hover:bg-[#0a2a9f]"
                     >
-                      <RadioGroupItem value={address.id} id={address.id} className="mt-1" />
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className="font-medium">{address.label}</span>
-                          {address.is_default && (
-                            <Badge variant="secondary" className="text-xs">
-                              <Star className="h-3 w-3 mr-1" />
-                              Predeterminada
-                            </Badge>
+                      <Plus className="h-4 w-4 mr-2" />
+                      Agregar Dirección
+                    </Button>
+                  </div>
+                ) : (
+                  <RadioGroup 
+                    value={selectedAddress || ''} 
+                    onValueChange={setSelectedAddress}
+                    className="space-y-3"
+                  >
+                    {addresses.map((address) => (
+                      <div
+                        key={address.id}
+                        className={`flex items-start gap-3 p-4 rounded-lg border-2 cursor-pointer transition-all ${
+                          selectedAddress === address.id
+                            ? 'border-[#071d7f] bg-blue-50/50'
+                            : 'border-border hover:border-muted-foreground'
+                        }`}
+                        onClick={() => setSelectedAddress(address.id)}
+                      >
+                        <RadioGroupItem value={address.id} id={address.id} className="mt-1" />
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="font-medium">{address.label}</span>
+                            {address.is_default && (
+                              <Badge variant="secondary" className="text-xs">
+                                <Star className="h-3 w-3 mr-1" />
+                                Predeterminada
+                              </Badge>
+                            )}
+                          </div>
+                          <p className="text-sm font-medium">{address.full_name}</p>
+                          <p className="text-sm text-muted-foreground">{address.street_address}</p>
+                          <p className="text-sm text-muted-foreground">
+                            {address.city}{address.state ? `, ${address.state}` : ''} - {address.country}
+                          </p>
+                          {address.phone && (
+                            <p className="text-sm text-muted-foreground">Tel: {address.phone}</p>
                           )}
                         </div>
-                        <p className="text-sm font-medium">{address.full_name}</p>
-                        <p className="text-sm text-muted-foreground">{address.street_address}</p>
-                        <p className="text-sm text-muted-foreground">
-                          {address.city}{address.state ? `, ${address.state}` : ''} - {address.country}
-                        </p>
-                        {address.phone && (
-                          <p className="text-sm text-muted-foreground">Tel: {address.phone}</p>
+                      </div>
+                    ))}
+                  </RadioGroup>
+                )}
+              </Card>
+            )}
+
+            {/* Pickup Points */}
+            {deliveryMethod === 'pickup' && (
+              <Card className="p-6">
+                <h2 className="text-lg font-bold mb-4 flex items-center gap-2">
+                  <Store className="h-5 w-5 text-[#071d7f]" />
+                  Punto de Retiro
+                </h2>
+
+                {pickupPoints.length === 0 ? (
+                  <div className="text-center py-6 bg-muted/50 rounded-lg">
+                    <Store className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
+                    <p className="text-muted-foreground">No hay puntos de retiro disponibles</p>
+                  </div>
+                ) : (
+                  <RadioGroup 
+                    value={selectedPickupPoint || ''} 
+                    onValueChange={setSelectedPickupPoint}
+                    className="space-y-3"
+                  >
+                    {pickupPoints.map((point) => (
+                      <div
+                        key={point.id}
+                        className={`flex items-start gap-3 p-4 rounded-lg border-2 cursor-pointer transition-all ${
+                          selectedPickupPoint === point.id
+                            ? 'border-[#071d7f] bg-blue-50/50'
+                            : 'border-border hover:border-muted-foreground'
+                        }`}
+                        onClick={() => setSelectedPickupPoint(point.id)}
+                      >
+                        <RadioGroupItem value={point.id} id={`pickup-${point.id}`} className="mt-1" />
+                        <div className="flex-1">
+                          <p className="font-semibold">{point.name}</p>
+                          <p className="text-sm text-muted-foreground">{point.address}</p>
+                          <p className="text-sm text-muted-foreground">
+                            {point.city}, {point.country}
+                          </p>
+                          {point.phone && (
+                            <p className="text-sm text-muted-foreground">Tel: {point.phone}</p>
+                          )}
+                        </div>
+                        {point.is_active && (
+                          <Badge variant="outline" className="text-green-600">
+                            Activo
+                          </Badge>
                         )}
                       </div>
-                    </div>
-                  ))}
-                </RadioGroup>
-              )}
-            </Card>
+                    ))}
+                  </RadioGroup>
+                )}
+              </Card>
+            )}
 
             {/* Order Items */}
             <Card className="p-6">
@@ -533,7 +666,7 @@ const CheckoutPage = () => {
                 </div>
               </div>
 
-              {selectedAddressData && (
+              {deliveryMethod === 'address' && selectedAddressData && (
                 <div className="mt-4 p-3 bg-muted/50 rounded-lg">
                   <p className="text-xs text-muted-foreground mb-1">Enviar a:</p>
                   <p className="text-sm font-medium">{selectedAddressData.full_name}</p>
@@ -541,9 +674,21 @@ const CheckoutPage = () => {
                 </div>
               )}
 
+              {deliveryMethod === 'pickup' && pickupPoints.find(p => p.id === selectedPickupPoint) && (
+                <div className="mt-4 p-3 bg-muted/50 rounded-lg">
+                  <p className="text-xs text-muted-foreground mb-1">Retiro en:</p>
+                  <p className="text-sm font-medium">{pickupPoints.find(p => p.id === selectedPickupPoint)?.name}</p>
+                  <p className="text-xs text-muted-foreground">{pickupPoints.find(p => p.id === selectedPickupPoint)?.city}</p>
+                </div>
+              )}
+
               <Button
                 onClick={handlePlaceOrder}
-                disabled={isProcessing || !selectedAddress || addresses.length === 0}
+                disabled={
+                  isProcessing || 
+                  (deliveryMethod === 'address' && (!selectedAddress || addresses.length === 0)) ||
+                  (deliveryMethod === 'pickup' && (!selectedPickupPoint || pickupPoints.length === 0))
+                }
                 className="w-full mt-6 bg-[#071d7f] hover:bg-[#0a2a9f]"
                 size="lg"
               >

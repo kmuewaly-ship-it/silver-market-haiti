@@ -32,6 +32,8 @@ export interface CreateB2COrderParams {
     country: string;
     notes?: string;
   };
+  delivery_method?: 'address' | 'pickup';
+  pickup_point_id?: string;
 }
 
 export const useCreateB2COrder = () => {
@@ -69,6 +71,14 @@ export const useCreateB2COrder = () => {
       
       if (params.payment_reference) {
         orderMetadata.payment_reference = params.payment_reference;
+      }
+
+      if (params.delivery_method) {
+        orderMetadata.delivery_method = params.delivery_method;
+      }
+
+      if (params.pickup_point_id) {
+        orderMetadata.pickup_point_id = params.pickup_point_id;
       }
 
       orderMetadata.order_type = 'b2c';

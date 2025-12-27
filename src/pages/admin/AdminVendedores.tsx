@@ -21,6 +21,8 @@ import {
   RefreshCw,
   UserCheck,
   UserX,
+  Percent,
+  Edit2,
 } from "lucide-react";
 import {
   AlertDialog,
@@ -32,6 +34,16 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { useCommissionOverrides } from "@/hooks/useCommissionOverrides";
 
 interface Seller {
   id: string;
@@ -51,6 +63,17 @@ const AdminVendedores = () => {
   const [actionSeller, setActionSeller] = useState<Seller | null>(null);
   const [actionType, setActionType] = useState<"verify" | "unverify" | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
+  
+  // Commission dialog states
+  const { createOverride, overrides } = useCommissionOverrides();
+  const [showCommissionDialog, setShowCommissionDialog] = useState(false);
+  const [selectedSellerForCommission, setSelectedSellerForCommission] = useState<Seller | null>(null);
+  const [commissionForm, setCommissionForm] = useState({
+    commission_percentage: 0,
+    commission_fixed: 0,
+    reason: "",
+  });
+  const [isSavingCommission, setIsSavingCommission] = useState(false);
 
   const fetchSellers = async () => {
     setIsLoading(true);
@@ -107,6 +130,33 @@ const AdminVendedores = () => {
       setIsProcessing(false);
       setActionSeller(null);
       setActionType(null);
+    }
+  };
+
+  const handleSaveCommission = async () => {
+    if (!selectedSellerForCommission) return;
+
+    if (commissionForm.commission_percentage === 0 && commissionForm.commission_fixed === 0) {
+      toast.error("Debes ingresar al menos un valor de comisión");
+      return;
+    }
+
+    setIsSavingCommission(true);
+    try {
+      const success = await createOverride(selectedSellerForCommission.id, {
+        commission_percentage: commissionForm.commission_percentage || undefined,
+        commission_fixed: commissionForm.commission_fixed || undefined,
+        reason: commissionForm.reason,
+      });
+
+      if (success) {
+        setShowCommissionDialog(false);
+        setSelectedSellerForCommission(null);
+        setCommissionForm({ commission_percentage: 0, commission_fixed: 0, reason: "" });
+        toast.success("Comisión personalizada guardada");
+      }
+    } finally {
+      setIsSavingCommission(false);
     }
   };
 
@@ -276,7 +326,20 @@ const AdminVendedores = () => {
                               Verificado
                             </Badge>
                           </TableCell>
-                          <TableCell className="text-right">
+                          <TableCell className="text-right space-x-2 flex justify-end">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => {
+                                setSelectedSellerForCommission(seller);
+                                setCommissionForm({ commission_percentage: 0, commission_fixed: 0, reason: "" });
+                                setShowCommissionDialog(true);
+                              }}
+                              className="text-purple-600 border-purple-300 hover:bg-purple-50"
+                            >
+                              <Percent className="w-4 h-4 mr-1" />
+                              Comisión
+                            </Button>
                             <Button
                               size="sm"
                               variant="outline"
@@ -350,6 +413,117 @@ const AdminVendedores = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Commission Dialog */}
+      <Dialog open={showCommissionDialog} onOpenChange={setShowCommissionDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Percent className="h-5 w-5 text-purple-600" />
+              Comisión Personalizada
+            </DialogTitle>
+            <DialogDescription>
+              Configura una comisión personalizada para{" "}
+              <strong>{selectedSellerForCommission?.name}</strong>
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            {/* Comisión Porcentaje */}
+            <div className="space-y-2">
+              <Label htmlFor="comm-pct" className="text-sm font-medium">
+                Porcentaje de Comisión (%)
+              </Label>
+              <div className="relative">
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500">%</span>
+                <Input
+                  id="comm-pct"
+                  type="number"
+                  min="0"
+                  max="100"
+                  step="0.01"
+                  value={commissionForm.commission_percentage}
+                  onChange={(e) =>
+                    setCommissionForm({
+                      ...commissionForm,
+                      commission_percentage: parseFloat(e.target.value) || 0,
+                    })
+                  }
+                  className="pr-8"
+                  placeholder="0.00"
+                />
+              </div>
+            </div>
+
+            {/* Comisión Fija */}
+            <div className="space-y-2">
+              <Label htmlFor="comm-fix" className="text-sm font-medium">
+                Comisión Fija ($)
+              </Label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">$</span>
+                <Input
+                  id="comm-fix"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={commissionForm.commission_fixed}
+                  onChange={(e) =>
+                    setCommissionForm({
+                      ...commissionForm,
+                      commission_fixed: parseFloat(e.target.value) || 0,
+                    })
+                  }
+                  className="pl-8"
+                  placeholder="0.00"
+                />
+              </div>
+            </div>
+
+            {/* Razón */}
+            <div className="space-y-2">
+              <Label htmlFor="reason" className="text-sm font-medium">
+                Razón (opcional)
+              </Label>
+              <Input
+                id="reason"
+                placeholder="¿Por qué se aplica este override?"
+                value={commissionForm.reason}
+                onChange={(e) =>
+                  setCommissionForm({ ...commissionForm, reason: e.target.value })
+                }
+              />
+            </div>
+          </div>
+
+          <DialogFooter className="flex gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setShowCommissionDialog(false)}
+              disabled={isSavingCommission}
+            >
+              Cancelar
+            </Button>
+            <Button
+              onClick={handleSaveCommission}
+              disabled={isSavingCommission}
+              className="bg-purple-600 hover:bg-purple-700"
+            >
+              {isSavingCommission ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Guardando...
+                </>
+              ) : (
+                <>
+                  <Percent className="h-4 w-4 mr-2" />
+                  Guardar Comisión
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </AdminLayout>
   );
 };
